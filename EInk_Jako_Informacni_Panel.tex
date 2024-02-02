@@ -1,0 +1,73 @@
+% Nejprve uvedeme tridu dokumentu s volbami
+\documentclass[czech,master]{diploma}
+% Dalsi doplnujici baliky maker
+\usepackage[autostyle=true,czech=quotes]{csquotes} % korektni sazba uvozovek, podpora pro balik biblatex
+\usepackage[backend=biber, style=iso-numeric, alldates=iso]{biblatex} % bibliografie
+\usepackage{dcolumn} % sloupce tabulky s ciselnymi hodnotami
+\usepackage{subfig} % makra pro "podobrazky" a "podtabulky"
+\usepackage[cpp]{diplomalst}
+
+% Zadame pozadovane vstupy pro generovani titulnich stran.
+\ThesisAuthor{Bc. Marek Lukáš}
+
+\ThesisSupervisor{Ing. David Seidl, Ph.D.}
+
+\CzechThesisTitle{Eink display jako informační panel}
+
+\EnglishThesisTitle{Eink Display on Information Panel}
+
+\SubmissionYear{2024}
+
+\ThesisAssignmentFileName{Zadani.pdf}
+
+% Pokud nechceme nikomu dekovat makro zapoznamkujeme.
+\Acknowledgement{TODO}
+
+\CzechAbstract{TODO}
+
+\CzechKeywords{esp32, inkplate, eink}
+
+\EnglishAbstract{TODO}
+
+\EnglishKeywords{esp32, inkplate, eink}
+
+\AddAcronym{TODO}{TODO}
+
+\addbibresource{bibliografie.bib}
+
+% Novy druh tabulkoveho sloupce, ve kterem jsou cisla zarovnana podle desetinne carky
+\newcolumntype{d}[1]{D{,}{,}{#1}}
+
+
+% Zacatek dokumentu
+\begin{document}
+
+% Nechame vysazet titulni strany.
+\MakeTitlePages
+
+% Jsou v praci obrazky? Pokud ano vysazime jejich seznam a odstrankujeme.
+% Pokud ne smazeme nasledujici dve makra.
+\listoffigures
+\clearpage
+
+% Jsou v praci tabulky? Pokud ano vysazime jejich seznam a odstrankujeme.
+% Pokud ne smazeme nasledujici dve makra.
+\listoftables
+\clearpage
+
+% A nasleduje text zaverecne prace.
+\input{Kapitoly/Uvod}
+\input{Kapitoly/EInkPanel}
+\input{Kapitoly/SystemyRealnehoCasu}
+\input{Kapitoly/PraktickaCast}
+\input{Kapitoly/Zaver}
+
+% Seznam literatury
+\printbibliography[title={Literatura}, heading=bibintoc]
+
+% Prilohy
+\appendix
+\input{Prilohy/Priloha1}
+\input{Prilohy/Priloha2}
+
+\end{document}
