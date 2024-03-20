@@ -8,9 +8,6 @@
 2.1.1 Charakteristiky Eink technologie
 2.1.2 Možnosti zobrazení a omezení
 2.1.3 Programování Eink Displaye
-2.2 Systémy reálného času
-2.2.1 Definice a význam v kontextu projektu
-2.2.2 Využití v informačních systémech
 
 ## III. Implementace Eink Displaye
 3.1 Popis hardware a možnosti programování
@@ -31,13 +28,6 @@
 4.3.1 Přihlašování uživatelů a jejich práva
 4.3.2 Možnosti definování obsahu na jednotlivých displejích
 4.4 Zabezpečení systému
-
-## V. Testování a validace
-5.1 Testovací scénáře
-5.2 Metody testování
-5.2.1 Simulace změn v systému
-5.2.2 Testování v reálném prostředí
-5.3 Vyhodnocení výsledků
 
 ## VI. Závěr
 6.1 Shrnutí dosažených výsledků

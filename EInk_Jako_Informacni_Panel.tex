@@ -31,9 +31,11 @@
 
 \EnglishKeywords{esp32, inkplate, eink}
 
-\AddAcronym{TODO}{TODO}
+% bibliografie
+\addbibresource{bibliography.bib}
 
-\addbibresource{bibliografie.bib}
+% zkratky
+\input{acronyms}
 
 % Novy druh tabulkoveho sloupce, ve kterem jsou cisla zarovnana podle desetinne carky
 \newcolumntype{d}[1]{D{,}{,}{#1}}
@@ -57,9 +59,10 @@
 
 % A nasleduje text zaverecne prace.
 \input{Kapitoly/Uvod}
-\input{Kapitoly/EInkPanel}
-\input{Kapitoly/SystemyRealnehoCasu}
-\input{Kapitoly/PraktickaCast}
+\input{Kapitoly/Hardware_a_prostredi}
+\input{Kapitoly/Navrh_systemu}
+\input{Kapitoly/Implementace}
+\input{Kapitoly/Nasazeni}
 \input{Kapitoly/Zaver}
 
 % Seznam literatury
