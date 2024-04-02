@@ -1,17 +1,77 @@
 \chapter{Hardware a prostředí}
 
-Středem celého projektu je panel Inkplate 10 od chorvatské firmy Soldered Electronics.
-
 \section{Inkplate 10}
-\subsection{Technologie}
-    \subsubsection{ESP32}
-    \subsubsection{Elektronický inkoust}
+Středem celého projektu je panel Inkplate 10 od chorvatské společnosti Soldered Electronics. Ta jej uvedla na začátku roku 2021, ještě pod svým tehdejším jménem e-radionica \cite{solderedelectronicsUs}, na crowdfundingové platformě Crowd Supply \cite{zovkoOurCampaignLive2021}.
+Kampaň měla za cíl vybrat 12 900 \$. To se jim podařilo vybrat za méně než 24 hodin \cite{crowdsupplyna[@crowd_supply]NewCampaignLaunched2021} a ve výsledku e-radionica vybrala přes 178 tisíc dolarů \cite{solderedelectronicsInkplate102021}.
 
-\section{Programování Inkplate}
-\subsection{Oficiální ovladače}
-    \subsubsection{Arduino}
-    \subsubsection{micropython}
-\subsection{Komunitní ovladače}
-    \subsubsection{ESP-IDF}
+Panel disponuje 9,7 palcovým e-ink displejem o rozlišení 1200 na 825 pixelů, USB-C portem, třemi kapacitními tlačítky, a integrovaným čipem ESP32.
+
+Oproti jiným panelům, jako jsou např. Waveshare EPD a Adafrui EPD, lze Inkplate 10 používat bez dodatečného hardwaru. Kromě samotného e-ink displeje je na jeho desce zabudovaný i modul mikrokontroleru ESP32-WROVER. Díky němu lze do Inkplatu snadno nahrát vlastní firmware a zobrazit například fotky ze zabudované čtečky MicroSD karet či z internetu přes zabudovanou Wi-Fi anténu \cite{solderedelectronicsInkplate102021}.
 
 \section{Možnosti zobrazení a omezení}
+
+Displej, funguje na technologii elektronického inkoustu a pochází z vyřazených zařízení několika výrobců. Mezi hlavní zdroje patří čtečky Amazon Kindle \cite{solderedelectronicsInkplate102021}. Obraz na panelu zůstává a je vidět i po odebrání napájení. Díky tomu je při málo frekventovaných aktualizacích vysoce úsporný. V případě mikrokontroleru stačí systém probudit z hlubokého spánku např. jen jednou za minutu, zjistit požadovaný stav, překreslit displej a na celou následující minutu se znovu uspat. Displej zůstane nadále čitelný \cite{heikenfeldReviewPaperCritical2011}.
+
+Každý pixel přitom může nabývat až 8 odstínů šedi, tedy 3 bity na jeden pixel. Aktualizace obrazu v tomto režimu trvá, dle výrobce, 1,81 sekundy.
+V černobílém režimu (režim 1 bit na pixel) podporuje i částečné překreslení, které zvládá za 0,62 sekundy \cite{solderedelectronicsInkplate102021}. Při mém testování byly tyto časy ale o něco delší.
+
+Důvodem pro relativně dlouhý čas pro překreslení panelu je technologie e-ink, tedy elektronický inkoust. Technologie (černo-bílého e-inkoustu) funguje na bázi fyzických miniaturních mikrokapslí, zhruba o průměru lidského vlasu. Každá kapsle obsahuje kladně nabité bílé částice a záporně nabité černé částice zachycené v čiré kapalině. Podle polarity elektrického pole v kapsli se černé a bílé částice rozdělí ke korespondujícím elektrodám u povrchu, čímž se daná kapsle zbarví do bíla či černa \cite{einkholdingsinc.ElectronicInkInk}. V případě panelů podporujících odstíny šedi, nejsou částice přesunuty plně k povrchu, ale jen částečně tak, aby poměr bílých a černých částic u povrchu na pohled připomínal cílený odstín šedi \cite{adafruitindustriesTHINKINKHow2020}. Jsou k tomu použity velmi přesné střídavé náboje. Pomalé vykreslování je způsobené relativně vysokou dobou přesunu částic a jejich ustálením. Navíc přesun částic není plně spolehlivý a při vykreslování je běžné, že některé skupiny částic zůstanou nepřesunuté, e-ink displeje bývá nutno relativně často resetovat cyklickým překreslením černého a bílého stavu \cite{heikenfeldReviewPaperCritical2011}.
+
+\section{Programování Inkplate}
+
+Pro účely programování nabízí Inkplate \cite{solderedelectronicsInkplate102021}\cite{solderedelectronicsInkplateFeaturesInkplate}:
+\begin{itemize}
+    \item dvoujádrový procesor s frekvencí až 240 MHZ
+    \item 8 MB paměti RAM
+    \item 4 MB paměti flash
+    \item USB-C port
+    \item integrovanou podporu Wi-Fi a Bluetooth 4.0
+    \item integrovaný USB-UART konvertor
+    \item integrovaný časovač (RTC)
+    \item volně přístupné GPIO piny s nativní podporou protokolů I\textsuperscript{2}C, SPI a easyC/Qwiic
+\end{itemize}
+
+\subsection{ESP32}
+Zabudovaný mikrokontroler je založený na čipu ze série ESP32 od čínské společnosti Espressif Systems \cite{espressifEspressifEspressifSystems}. Jedná se o nástupce čipu ESP8266 z roku 2014 uvedený o dva roky později v září 2016 \cite{espressifEspressifAnnouncesLaunch}. Tyto čipy jsou známé svou relativně nízkou cenou, integrovanou konektivitou, výkonem a otevřeností svého firmwaru. Staví se mezi nejčastěji používané mikrokontrolery na světě\cite{espressifEspressifLeadsIoT}\cite{espressifEspressifEspressifSystems}.
+
+Je navržen pro mobilní zařízení, průmyslovou automatizaci a internet věcí. Pro účely omezení spotřeby energie nabízí několik režimů spánku, dynamickým škálováním výkonu a relativně nízkou aktivní spotřebu hlavního procesoru. V režimu Hlubokého spánku jeho spotřeba padne až na $10 \mu A$ i při zachování napájení RTC paměti. Pro aplikace kritické na bezpečnost nabídne hardwarově akcelerované kryptografické šifry, Secure Boot (ověření podpisu zaváděného firmwaru) a obecné šifrování flash paměti \cite{esp32_datasheet}. 
+
+Všechny čipy ESP32 nabízí\cite{espressifProductOverviewESP32}:
+\begin{itemize}
+    \item Wi-Fi (2,4 GHz)
+    \item Bluetooth 4.0
+    \item dvoujádrový 32-bitový procesor Tensilica Xtensa LX6 operujiící až na 240 MHz
+    \item úsporný koprocesor
+\end{itemize}
+
+\subsection{ESP-IDF}
+Oficiální vývojové prostředí pro čipy řady ESP. Bylo vyvíjeno otevřeně pod open-source licensí Apache License 2.0 od uvedení ESP32 \cite{grokhotkovInitialPublicVersion2016}. ESP-IDF je založeno na implementaci operačního systému FreeRTOS, ale nabízí i ucházející podporu API kompatibilních se standardem POSIX. Pro příklad lze pro tvorbu vláken používat jak nativní \verb|xTaskCreate| z FreeRTOS tak i posixové \verb|pthread_create| \cite{espressifPOSIXThreadsSupport}. Zdrojový kód projektů závisejících na ESP-IDF se díky tomu téměř neliší od projektů pro běžné posixové operační systémy.
+
+Od verze v2.0 podporuje projekty využívající C++ a STL \cite{grokhotkovReleaseESPIDFRelease} a ve své aktuální verzi v5.2 podporuje kompiluje se standardem C++23. S omezeními zvládá podporu C++ vláken, mutex, výjimek i RTTI \cite{espressifSupportESP32ESPIDF}. Vlákna a mutex jsou postavené nad interní implementací \verb|pthread.h| \cite{espressifPOSIXThreadsSupport}.
+
+Kromě standardní knihovny C/C++ obsahuje SDK funkce pro přístup k hardwaru čipů ESP, jako je Wi-Fi, Bluetooth, persistentní paměť, JTAG debugging, HAL a LL abstrakce, zabezpečení bootloaderu a Over-The-Air aktualizace \cite{espressifAPIGuidesESP32}.
+
+\subsection{Oficiální ovladače}
+\subsubsection{Arduino}
+
+\subsubsection{micropython}
+
+\subsection{Komunitní ovladače}
+\subsubsection{ESP-IDF}
+
+\subsection{Režim periferie}
+Mimo samostatný režim, při kterém aplikace ovládající displej běží na zabudovaném mikrokontroleru, nabízí Inkplate i režim periferie. V takovém režimu panel naslouchá na rozhraní UART na textové příkazy, které převádí na volání funkcí oficiální knihovny. Na nových panelech od Soldered bývá předinstalován jako výchozí firmware. Protože se ale jedná o firmware běžící na ESP32 a ne na samotném displeji, je distribuovaný jako ukázkový projekt v repozitáři oficiálního Arduino ovladače a je na vývojáři, aby si jej v případě potřeby zkompiloval a nahrál do zařízení \cite{SolderedElectronicsInkplatePeripheralModeRaspberryPiExample2023}.
+
+Práce s displejem je podobná s ostatními ovladači a podporované funkce se liší primárně nutností korektně formátovat odesílané příkazy.
+
+\begin{lstlisting}[label=src:ArduinoVsPeripheral,caption={Příklady příkazů korespondujících s Arduino knihovnou \cite{solderedelectronicsInkplatePeripheralMode}:}]
+// Arduino - zakreslení pixelu
+display.drawPixel(1, 5, 4);
+// UART
+#0(001,005,04)*\r\n
+
+// Arduni - reset displeje
+display.clearDisplay();
+// UART
+#K(1)*\r\n
+\end{lstlisting}

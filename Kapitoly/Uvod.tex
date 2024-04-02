@@ -1,12 +1,18 @@
 \chapter{Úvod}
 
-K čemu by byly prázdné informační panely či bez možnosti je centralizovaně spravovat? Specificky panely instalované v prostorách Fakulty elektrotechniky a informatiky VŠB - Technické univerzitě Ostrava. Panely založené na technologii elektronického inkoustu a mikrokontroleru esp32, které před začátkem této diplomové práce teprve čekaly na svůj první firmware. Hlavním cílem této práce je oživení těchto panelů k životu a jejich reálné nasazení na strategických místech fakultní budovy.
+K čemu by byly prázdné informační panely či bez možnosti je centralizovaně spravovat? Specificky panely e-radionica Inkplate 10, instalované v prostorách Fakulty elektrotechniky a informatiky VŠB - Technické univerzitě Ostrava.
 
-Práce je rozdělena do pěti základních kapitol. První kapitola  hardware a prostředí, pro které je systém určen. Zaměřena je především na popis samotných panelů, na kterých je tato práce postavena. Je zmíněna jejich softwarová a hardwarová architektura, možnosti, které nabízejí a limitace, se kterými bylo nutno pracovat při vývoji a návrhu. Zahrnuta je také analýza technologie elektronického inkoustu, jeho výhod, omezení v kontextu tohoto projektu.
+Panely založené na technologii elektronického inkoustu, které před začátkem této diplomové práce teprve čekaly na svůj první firmware. Hlavním cílem této práce je přivedení těchto panelů k životu a jejich reálné nasazení na strategických místech fakultní budovy.
+
+Prvním z cílových míst jsou zasedací místnosti, u kterých je běžné, že se průběžně mění rozpis jejich rezervací. Bez denně aktualizované tabulky rozpisu nelze jednoduše zjistit, jaká schůzka se právě koná a kdy bude místnost opět volná. S elektronickým panelem lze rozpis automaticky aktualizovat a mít tak vždy aktuální přehled o plánu místnosti.
+
+Přednáškové místnosti jsou dalším z míst, kde je záhodno mít možnost dynamického rozvrhu. Z technických důvodů mohou být přednášky přesunuty do jiné místnosti nebo se může konat mimořádná přednáška mimo pravidelný rozvrh. Panely ale nemusí sloužit jen pro účely rozvrhu. Mohou ukazovat čas, pokyny od pedagogů, promo obsah, fotky nebo akutní varování.
+
+Práce je rozdělena do pěti základních kapitol. První kapitola popisuje hardware a prostředí, pro které je systém určen. Zaměřena je především na popis samotných panelů, na kterých je tato práce postavena. Je zmíněna jejich softwarová a hardwarová architektura, možnosti, které nabízejí a limitace, se kterými bylo nutno pracovat při vývoji a návrhu. Zahrnuta je také analýza technologie elektronického inkoustu, jeho výhod, omezení v kontextu tohoto projektu.
 
 Druhá kapitola se zaměřuje na systém jako celek. Prochází historii návrhu systému a zmiňuje slepé uličky, které tvarovaly podobu konečného systému. Finálem kapitoly je popis stávající architektury systému. Kapitola slouží jako základ ke snadnějšímu porozumění následujících kapitol o jednotlivých částech systému. Důraz je kladen na modulární design a flexibilitu systému, které umožňují snadnou adaptabilitu na měnící se požadavky a integraci nových funkcionalit.
 
-Třetí kapitola se věnuje samotné implementaci jednotlivých částí navrženého systému. Každá její část obsahuje popis implementovaných API. Od návrhu po jejich implementaci. V první části kapitoly je popsána implementace firmwaru panelu. V další je popsán backend systému. Třetí část se zabývá implementací webové aplikace sloužící k autentizované interakci s jednotlivými komponentami. Rozbor každé části zahrnuje technické detaily a výzvy, se kterými jsem se setkal, a způsoby, jakými jsem výzvy překonal.
+Třetí kapitola se věnuje samotné implementaci jednotlivých částí navrženého systému. Každá její část obsahuje popis implementovaných API. Od návrhu po jejich implementaci. V první části kapitoly je popsána implementace firmwaru panelu. V další je popsán backend systému. Třetí část se zabývá implementací webové aplikace sloužící k autentizované interakci s jednotlivými komponentami. Rozbor každé části zahrnuje technické detaily a výzvy, se kterými jsem se setkal, a způsoby, jakými jakými jsem se rozhodl výzvy řešit.
 
 Čtvrtá kapitola popisuje, jak byl systém nasazen v produkčním prostředí a jaké technologie jsou použity pro jeho sestavení a údržbu. Tato část završuje celý proces vývoje.
 
