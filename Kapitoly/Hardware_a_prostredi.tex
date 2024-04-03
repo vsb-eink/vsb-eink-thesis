@@ -51,27 +51,139 @@ Od verze v2.0 podporuje projekty využívající C++ a STL \cite{grokhotkovRelea
 
 Kromě standardní knihovny C/C++ obsahuje SDK funkce pro přístup k hardwaru čipů ESP, jako je Wi-Fi, Bluetooth, persistentní paměť, JTAG debugging, HAL a LL abstrakce, zabezpečení bootloaderu a Over-The-Air aktualizace \cite{espressifAPIGuidesESP32}.
 
-\subsection{Oficiální ovladače}
-\subsubsection{Arduino}
+\subsection{Oficiální knihovny}
+Soldered Electronics pro své panely vyvíjí a udržuje knihovny pro dvě vývojové platformy. Arduino a MicroPython. Nabízejí jednotné API pro práci s jakýmkoliv panelem od této společnosti. Obě pokrývají všechny základní potřeby pro interakci s displejem, přístup k hardwaru specifického pro jednotlivé panely a řadu pomocných funkcí např. pro dekódování obrázků či připojení k síti Wi-Fi.
 
-\subsubsection{micropython}
+\begin{table}[h]
+\centering
+\caption{Srovnán aktivity repozitářů knihoven pro vývoj pro panely Inkplate (větev master, 02.04.2024)}
+\label{tab:inkplate-library-comparison}
+\begin{tabular}{llll}
+\multicolumn{1}{c}{}
+    & Inkplate Arduino\cite{SolderedElectronicsInkplateArduinolibrary2024}
+    & Inkplate MicroPython\cite{SolderedElectronicsInkplatemicropythonMicropython}
+    & Inkplate ESP-IDF\cite{turcotteTurgu1ESPIDFInkPlate2024} \\ \hline
+první commit             & 15.12.2019 & 17.08.2020  & 23.12.2019 \\
+poslední commit          & 01.04.2024 & 19.02.2024  & 09.02.2023 \\
+počet commitů            & 1330       & 123         & 162        \\
+ot./uz. issues           & 3/140      & 5/15        & 5/8        \\ \hline
+\end{tabular}
+\end{table}
 
-\subsection{Komunitní ovladače}
-\subsubsection{ESP-IDF}
+\subsubsection{Inkplate Arduino}
+Platforma Arduino se skládá z mikrokontrolerů, programovacího jazyku, vývojového prostředí (IDE) a ekosystému Arduino knihoven. Arduino vzniklo jako učební pomůcka na Ivrea Interaction Design Institute v Milánu. Mělo za cíl vytvořit prostředí a vývojové desky, se kterými mohou pracovat i studenti bez podrobných znalostí elektroniky a programování \cite{WhatArduino}. Z čistě učební pomůcky se postupem času stala univerzální vývojová platforma sjednocující vývoj pro mikrokontrolery různých výrobců, tak i vlastní mikrokontrolery Arduino používané v enterprise IoT zařízeních \cite{Arduino}. Na softwarové platformě Arduino lze od roku 2018 vyvíjet i pro mikrokontrolery série ESP32 pomocí oficiální implementace Arduino Core \cite{ReleasesEspressifArduinoesp32}. Ta je vrstvou integrující softwarová API Arduino nad ESP-IDF. Lze tak nejen používat Arduino jazyk pro vývoj na ESP32, ale i integrovat knihovny určené pro Arduino v ESP-IDF projektu \cite{espressifsystemsArduinoESPIDFComponent}.
+
+Na této kompatibilní vrstvě je postavena knihovna Inkplate Arduino. Pro Soldered je tato knihovna pro vlajkovou lodí. Mezi zmiňovanými knihovnami v této kapitole čítá její repozitář největšímu množství příspěvků a je mezi nimi též nejstarší \ref{tab:inkplate-library-comparison}.
+
+\begin{lstlisting}[label=src:arduino-hello-world,language=C++,caption={Ukázka programu pro vykreslení kružnice a Hello World řetězce pomocí Arduino knihovny}]
+#include "Inkplate.h"
+
+// vytvoření instance ovladače
+Inkplate display(INKPLATE_1BIT);
+
+void setup() {
+    // inicializace ovladače
+    display.begin();
+    // vyčištění displeje a bufferu
+    display.clearDisplay();
+    display.display();
+    // vykreslení kružnice
+    display.drawCircle(600, 412, 75, BLACK)
+    // vykreslení textu
+    display.setTextColor(BLACK, WHITE);
+    display.setCursor(587, 550);
+    display.print("Hello, world!");
+    // částečné překreslení obrazovky
+    display.partialUpdate();
+}
+\end{lstlisting}
+
+\subsubsection{Inkplate MicroPython}
+Druhá knihovna je určena pro firmware postavený na projektu MicroPython. Jedná se kompilátor a běhové prostředí implementující programovací jazyk Python 3 optimalizované pro běh na mikrokontrolerech a v omezených prostředí. Snaží se být co nejvíce kompatbilní s běžnými desktopovými verzemi Pythonu. Nabízí tak interaktivní příkazovou řádku, správu výjimek, výpočty s libovolnou přesností, věstavěný souborový systém \cite{MicroPythonPythonMicrocontrollers}.
+
+V čem se MicroPython razantně liší od od Arduina, je proces vývoje. V prostředí Arduino (a ESP-IDF) je vyvíjená aplikace kompilována na běžném počítači spolu s celým firmwarem určeného pro mikrokontroler. Výsledný obraz sice bývá optimálnější na využití prostředků mikrokontroleru, na druhou stranu tento přístup s sebou nese náročnější proces při testování aplikace a komplexnější soubory projektu jako celku. Po instalaci běhového prostředí MicroPythonu na ESP32, lze desku připojit k počítači, kde se dá připojit k interaktivní Python konzoli běžící na mikrokontroleru a vyvíjené programy upravovat a spouštět z emulovaného flash úložiště \cite{MicroPythonPythonMicrocontrollers}. Na některých deskách lze interní filesystem připojit k systému jako běznou USB klíčenku a upravovat uložené python skripty napřímo. Není potřeba nic kompilovat, nic flashovat, ani mít v systému speciální vývojové nástroje \cite{WorkingFilesystemsMicroPython}. V případě, že mikrokontroler nepodporuje režim USB MSC, je pro kopírování souborů na desku nutno použít nástroj \verb|pytboard.py|, který však lze verzovat uvnitř projektu a je obsažen i v projektu Inkplate knihovny \cite{PyboardPyTool}.
+
+Protože vyvíjená aplikace nemusí projít kompilací před jejím nahráním na desku, je kompilátor obsažen v MicroPython firmwaru. To má vliv na použitelnou velikost flash paměti pro vyvíjený program. Stejně tak tím, že je nutné skripty při načítání zpracovat a zkompilovat do Python bajtkódu, rychlost aplikací založených na běhovém prostředí MicroPython bývá citelně nižší než jejich kompilovaná alternativa v C/C++, jako je například ESP-IDF v případě ESP32 \cite{plauskaPerformanceEvaluationMicroPython2022}.
+
+\begin{lstlisting}[label=src:micropython-hello-world,language=Python,caption={Ukázka programu pro vykreslení kružnice a Hello World řetězce pomocí MicroPython knihovny}]
+from inkplate10 import Inkplate
+
+// vytvoření instance ovladače
+display = Inkplate(Inkplate.INKPLATE_1BIT)
+
+if __name__ == "__main__":
+    // inicializace ovladače
+    display.begin()
+    // vyčištění displeje a bufferu
+    display.clearDisplay()
+    display.display()
+    // vykreslení kružnice
+    display.drawCircle(600, 412, 75, display.BLACK)
+    // vykreslení textu
+    display.printText(587, 550, "Hello, world!");
+    // částečné překreslení obrazovky
+    display.partialUpdate()
+}
+\end{lstlisting}
+
+\subsection{Komunitní knihovny}
+\subsubsection{Inkplate ESP-IDF}
+
+Třetí oficiálně doporučenou knihovnou je Inkplate ESP-IDF. Ta však není vyvíjena přímo společností Soldered Electronics, ale vývojářem Guyem Turcottem. Jde o port původní Inkplate Arduino knihovny do prostředí ESP-IDF a platformy PlatformIO. Turcott původní knihovnu z velké části přepsal tak, aby závisela jen na nativní standardní knihovně ESP-IDF, používala C++ syntaxi a bylo minimalizováno využití maker \cite{ESPIDFInkPlateREADMEMd}.
+
+Port vznikl pro účely Turcottova projeku čtečky elektronických knih. Čtečka byla určena pro osobou mu blízkou, která po úrazu utrpěla poranění míchy a zůstala upoutána na lůžku jen s omezeným pohybem končetin. Turcott jí symbolicky projekt věnoval, po její smrti na Covid-19, koncem roku 2020 \cite{turcotteTurgu1EPubInkPlate2024}.
+
+Na této knihovně mám částečný podíl i já, protože jsem si ji zvolil jako výchozí knihovnu pro interakci se zapůjčeným panel v rámci této práce a do upstreamu se dostalo pár změn, které jsem připravil ve svém forku. 
+
+\paragraph{PlatformIO} Původní verze Inkplate ESP-IDF byla připravena pro integraci v platformě PlatformIO. Ta slouží jako nástroj usnadňující práci s vývojovými prostředími embedded systémů. Sjednocuje tak příkazy pro inicializaci správné verze prostředí, konfiguraci parametrů desky, sestavení, flash apod \cite{WhatPlatformIOPlatformIO}. V době, kdy jsem ale projekt zakládal, nepodporovalo PlatformIO IDF verze 5.0 a nefungovala mi její integrace v prostředí editoru CLion. Naštěstí bylo potřeba jen vytvořit soubor \verb|CMakeLists.txt| registrující knihovnu jako komponentu ESP-IDF a zdokumentovat ruční instalaci knihovny do existujících ESP-IDF projektů.
+
+\paragraph{ESP-IDF v5.0} Ve verzi 5.0 ESP-IDF přineslo řadu nových funkcí a zároveň i množství zpěně nekompatibilních změn. Knihovna s touto verzí nebyla kompatiblní. IDF změnilo verzi GCC a s ní verzi cílového standardu C++. Ve verzi C++20 byla například odebrána podpora smíšeného bitového přiřazení volatilních typů \cite{jtcDedeprecatingVolatileCompound}. V rámci knihovny ESP-IDF se zase změnily názvy některých konstant\cite{PeripheralsESP32S2ESPIDF} a byl odebrána stará verz ovladače SD karty \cite{StorageESP32S2ESPIDF}, kterou Inkplate ESP-IDF interně používal. Jednotlivé rozbité části jsem opravil a byly připojeny do větve \verb|idf-v5.0-support| upstream repozitáře \cite{WIPInitialSupport}. 
+
+\paragraph{Chyba certifikátu} Knihovna podporovala načítání obrázků ze vzdálené http adresy, ale padala při snaze o načtení https adres. Bylo nutné přiřadit do interního síťového klienta balík s certifikáty \cite{MenuconfigVariantSelection}.
+
+\paragraph{Znovunavázání Wi-Fi spojení} Inkplate ESP-IDF obsahuje pomocnou funkci \verb|Display::joinAP()|, pro usnadnějí připojení desky k síti. Při testování jsem ale, bohužel, zjistil, že se při nepodařeném spojení \verb|joinAp()| již znovu nepřipojí. Na vině bylo chybné resetování adaptéru ESP-NETIF a kontroly připojeného stavu \cite{MenuconfigVariantSelection}
+
+
+\begin{lstlisting}[label=src:esp-idf-hello-world,language=C++,caption={Ukázka programu pro vykreslení kružnice a Hello World řetězce pomocí ESP-IDF knihovny}]
+#include "inkplate.hpp"
+
+// vytvoření instance ovladače
+Inkplate display(DisplayMode::INKPLATE_1BIT);
+
+extern "C" {
+    void app_main() {
+        // inicializace ovladače
+        display.begin();
+        // vyčištění displeje a bufferu
+        display.clearDisplay();
+        display.display();
+        // vykreslení kružnice
+        display.drawCircle(600, 412, 75, BLACK)
+        // vykreslení textu
+        display.setTextColor(BLACK, WHITE);
+        display.setCursor(587, 550);
+        display.print("Hello, world!");
+        // částečné překreslení obrazovky
+        display.partialUpdate();
+    }
+}
+\end{lstlisting}
 
 \subsection{Režim periferie}
 Mimo samostatný režim, při kterém aplikace ovládající displej běží na zabudovaném mikrokontroleru, nabízí Inkplate i režim periferie. V takovém režimu panel naslouchá na rozhraní UART na textové příkazy, které převádí na volání funkcí oficiální knihovny. Na nových panelech od Soldered bývá předinstalován jako výchozí firmware. Protože se ale jedná o firmware běžící na ESP32 a ne na samotném displeji, je distribuovaný jako ukázkový projekt v repozitáři oficiálního Arduino ovladače a je na vývojáři, aby si jej v případě potřeby zkompiloval a nahrál do zařízení \cite{SolderedElectronicsInkplatePeripheralModeRaspberryPiExample2023}.
 
-Práce s displejem je podobná s ostatními ovladači a podporované funkce se liší primárně nutností korektně formátovat odesílané příkazy.
+Práce s displejem je podobná ostatním zmíněným knihovnám a podporované funkce se liší primárně nutností korektně formátovat odesílané příkazy \cite{solderedelectronicsInkplatePeripheralMode}.
 
-\begin{lstlisting}[label=src:ArduinoVsPeripheral,caption={Příklady příkazů korespondujících s Arduino knihovnou \cite{solderedelectronicsInkplatePeripheralMode}:}]
-// Arduino - zakreslení pixelu
-display.drawPixel(1, 5, 4);
-// UART
-#0(001,005,04)*\r\n
-
-// Arduni - reset displeje
-display.clearDisplay();
-// UART
-#K(1)*\r\n
+\begin{lstlisting}[label=src:PeripheralHelloWorld,caption={Ukázka příkazů pro vykreslení kružnice a Hello World řetězce v režimu periferie}]
+// -- řádky odděleny /r/n ---
+// vyčištění displeje a bufferu
+#K(1)*
+#L(1)*
+// vykreslení kružnice
+#5(600,412,075,01)*
+// vykreslení textu (řetězec je nutné převést do hexadecimálního tvaru)
+#E(587,550)*
+#C("48656c6c6f2c20776f726c6421")*
+// částečné překreslení obrazovky
+#M(000,1199,824)*
 \end{lstlisting}
