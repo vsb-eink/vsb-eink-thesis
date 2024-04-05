@@ -45,9 +45,9 @@ Všechny čipy ESP32 nabízí\cite{espressifProductOverviewESP32}:
 \end{itemize}
 
 \subsection{ESP-IDF}
-Oficiální vývojové prostředí pro čipy řady ESP. Bylo vyvíjeno otevřeně pod open-source licensí Apache License 2.0 od uvedení ESP32 \cite{grokhotkovInitialPublicVersion2016}. ESP-IDF je založeno na implementaci operačního systému FreeRTOS, ale nabízí i ucházející podporu API kompatibilních se standardem POSIX. Pro příklad lze pro tvorbu vláken používat jak nativní \verb|xTaskCreate| z FreeRTOS tak i posixové \verb|pthread_create| \cite{espressifPOSIXThreadsSupport}. Zdrojový kód projektů závisejících na ESP-IDF se díky tomu téměř neliší od projektů pro běžné posixové operační systémy.
+Oficiální vývojové prostředí pro čipy řady ESP. Bylo vyvíjeno otevřeně pod open-source licensí Apache License 2.0 od uvedení ESP32 \cite{grokhotkovInitialPublicVersion2016}. ESP-IDF je založeno na implementaci operačního systému FreeRTOS, ale nabízí i ucházející podporu API kompatibilních se standardem POSIX. Pro příklad lze pro tvorbu vláken používat jak nativní \lstinline|xTaskCreate| z FreeRTOS tak i posixové \lstinline|pthread_create| \cite{espressifPOSIXThreadsSupport}. Zdrojový kód projektů závisejících na ESP-IDF se díky tomu téměř neliší od projektů pro běžné posixové operační systémy.
 
-Od verze v2.0 podporuje projekty využívající C++ a STL \cite{grokhotkovReleaseESPIDFRelease} a ve své aktuální verzi v5.2 podporuje kompiluje se standardem C++23. S omezeními zvládá podporu C++ vláken, mutex, výjimek i RTTI \cite{espressifSupportESP32ESPIDF}. Vlákna a mutex jsou postavené nad interní implementací \verb|pthread.h| \cite{espressifPOSIXThreadsSupport}.
+Od verze v2.0 podporuje projekty využívající C++ a STL \cite{grokhotkovReleaseESPIDFRelease} a ve své aktuální verzi v5.2 podporuje kompiluje se standardem C++23. S omezeními zvládá podporu C++ vláken, mutex, výjimek i RTTI \cite{espressifSupportESP32ESPIDF}. Vlákna a mutex jsou postavené nad interní implementací \lstinline|pthread.h| \cite{espressifPOSIXThreadsSupport}.
 
 Kromě standardní knihovny C/C++ obsahuje SDK funkce pro přístup k hardwaru čipů ESP, jako je Wi-Fi, Bluetooth, persistentní paměť, JTAG debugging, HAL a LL abstrakce, zabezpečení bootloaderu a Over-The-Air aktualizace \cite{espressifAPIGuidesESP32}.
 
@@ -75,6 +75,8 @@ Platforma Arduino se skládá z mikrokontrolerů, programovacího jazyku, vývoj
 
 Na této kompatibilní vrstvě je postavena knihovna Inkplate Arduino. Pro Soldered je tato knihovna pro vlajkovou lodí. Mezi zmiňovanými knihovnami v této kapitole čítá její repozitář největšímu množství příspěvků a je mezi nimi též nejstarší \ref{tab:inkplate-library-comparison}.
 
+Pro Arduino existuje mnoho knihoven a návodů. Jde de facto o standard pro prototypování embedded zařízení. Na tento projekt se však příliš nehodila. Ne všechny knihovny pro ESP-IDF fungují pod Arduino Core a ne všechny Arduino knihovny fungují na ESP32. Jsem zastáncem moderních standardů C++, které nabízí ESP-IDF s relativně aktuální implementací standardu a kompilátoru. Inkplate Arduino však závisí na verzi Arduino Core, které podporuje, ještě v době psaní tohoto textu, jen staré ESP-IDF v4.4. Aktuální verze je přitom v5.2.
+
 \begin{lstlisting}[label=src:arduino-hello-world,language=C++,caption={Ukázka programu pro vykreslení kružnice a Hello World řetězce pomocí Arduino knihovny}]
 #include "Inkplate.h"
 
@@ -101,9 +103,34 @@ void setup() {
 \subsubsection{Inkplate MicroPython}
 Druhá knihovna je určena pro firmware postavený na projektu MicroPython. Jedná se kompilátor a běhové prostředí implementující programovací jazyk Python 3 optimalizované pro běh na mikrokontrolerech a v omezených prostředí. Snaží se být co nejvíce kompatbilní s běžnými desktopovými verzemi Pythonu. Nabízí tak interaktivní příkazovou řádku, správu výjimek, výpočty s libovolnou přesností, věstavěný souborový systém \cite{MicroPythonPythonMicrocontrollers}.
 
-V čem se MicroPython razantně liší od od Arduina, je proces vývoje. V prostředí Arduino (a ESP-IDF) je vyvíjená aplikace kompilována na běžném počítači spolu s celým firmwarem určeného pro mikrokontroler. Výsledný obraz sice bývá optimálnější na využití prostředků mikrokontroleru, na druhou stranu tento přístup s sebou nese náročnější proces při testování aplikace a komplexnější soubory projektu jako celku. Po instalaci běhového prostředí MicroPythonu na ESP32, lze desku připojit k počítači, kde se dá připojit k interaktivní Python konzoli běžící na mikrokontroleru a vyvíjené programy upravovat a spouštět z emulovaného flash úložiště \cite{MicroPythonPythonMicrocontrollers}. Na některých deskách lze interní filesystem připojit k systému jako běznou USB klíčenku a upravovat uložené python skripty napřímo. Není potřeba nic kompilovat, nic flashovat, ani mít v systému speciální vývojové nástroje \cite{WorkingFilesystemsMicroPython}. V případě, že mikrokontroler nepodporuje režim USB MSC, je pro kopírování souborů na desku nutno použít nástroj \verb|pytboard.py|, který však lze verzovat uvnitř projektu a je obsažen i v projektu Inkplate knihovny \cite{PyboardPyTool}.
+V čem se MicroPython razantně liší od od Arduina, je proces vývoje. V prostředí Arduino (a ESP-IDF) je vyvíjená aplikace kompilována na běžném počítači spolu s celým firmwarem určeného pro mikrokontroler. Výsledný obraz sice bývá optimálnější na využití prostředků mikrokontroleru, na druhou stranu tento přístup s sebou nese náročnější proces při testování aplikace a komplexnější soubory projektu jako celku. Po instalaci běhového prostředí MicroPythonu na ESP32, lze desku připojit k počítači, kde se dá připojit k interaktivní Python konzoli běžící na mikrokontroleru a vyvíjené programy upravovat a spouštět z emulovaného flash úložiště \cite{MicroPythonPythonMicrocontrollers}. Na některých deskách lze interní filesystem připojit k systému jako běznou USB klíčenku a upravovat uložené python skripty napřímo. Není potřeba nic kompilovat, nic flashovat, ani mít v systému speciální vývojové nástroje \cite{WorkingFilesystemsMicroPython}. V případě, že mikrokontroler nepodporuje režim USB MSC, je pro kopírování souborů na desku nutno použít nástroj \lstinline|pytboard.py|, který však lze verzovat uvnitř projektu a je obsažen i v projektu Inkplate knihovny \cite{PyboardPyTool}.
 
 Protože vyvíjená aplikace nemusí projít kompilací před jejím nahráním na desku, je kompilátor obsažen v MicroPython firmwaru. To má vliv na použitelnou velikost flash paměti pro vyvíjený program. Stejně tak tím, že je nutné skripty při načítání zpracovat a zkompilovat do Python bajtkódu, rychlost aplikací založených na běhovém prostředí MicroPython bývá citelně nižší než jejich kompilovaná alternativa v C/C++, jako je například ESP-IDF v případě ESP32 \cite{plauskaPerformanceEvaluationMicroPython2022}.
+
+Inkplate MicroPython je jednoduchá na používání a byl jsem s ní schopen panel velmi rychle zprovoznit. Při rešerši jsem ale narazil na několik omezení, která mi ho neumožnila použít pro tento projekt.
+
+Jedním z omezení byl výkon, při mém testování jsem zjistil, že programu stavějícím na MicroPythonu trvá překreslení obrazovky zhruba dvakrát déle než projektu postaveném na ESP-IDF. 
+
+Dalším omezením byla chybějící oficiální podpora pro aktualizace firmwaru na dálku. MicroPython sice OTA aktualizace podporuje, ale ne ve firmwaru pro variantu ESP32 na Inkplate 10. Důvodem je, že knihovna pro ovládání displeje závisí na využití externího paměťového modulu \cite{SolderedElectronicsInkplatemicropython2024}. Ten je však podporován jen ve verzi MicroPython firmwaru, která má standardní tabulku oddílů a nepodporuje bezpečné aktualizace. Protože MicroPython tuto informaci nikde přímo nezmiňuje, musel jsem si ji ověřit vyčtením tabulky oddílů ze staženého firmwaru.
+
+\begin{lstlisting}[label=src:micropython-spiram-partition-table,caption={Tabulka oddílů vyčtena z MicroPython firmwaru pomocí nástroje esp32part}]
+$ ./src/esp32part (\
+  dd if=$HOME/Stažené/ESP32_GENERIC-SPIRAM-20240222-v1.22.2.bin \
+  ibs=1 \
+  skip=(math 0xc00) \
+  count=(math 0x8000) | psub \
+  )
+32768+0 records in
+64+0 records out
+32768 bytes (33 kB, 32 KiB) copied, 0,00779111 s, 4,2 MB/s
+# Name,               Type, SubType,  Offset,     Size,       Flags
+nvs,                  data, nvs,      0x00009000, 0x00006000, 
+phy_init,             data, phy,      0x0000f000, 0x00001000, 
+factory,              app,  factory,  0x00010000, 0x001f0000, 
+vfs,                  data, fat,      0x00200000, 0x00200000,
+\end{lstlisting}
+
+Hlavním omezením však bylo, že Inkplate MicroPython podporuje na Inkplate 10 pouze čtyři odstíny šedi, místo nativních osmi \cite{RenameINKPLATE_2BITINKPLATE_3BIT}. Nemělo smysl začínat projekt nad ekosystémem, který by nepodporoval takto specifickou funkcionalitu panelu.
 
 \begin{lstlisting}[label=src:micropython-hello-world,language=Python,caption={Ukázka programu pro vykreslení kružnice a Hello World řetězce pomocí MicroPython knihovny}]
 from inkplate10 import Inkplate
@@ -135,13 +162,15 @@ Port vznikl pro účely Turcottova projeku čtečky elektronických knih. Čteč
 
 Na této knihovně mám částečný podíl i já, protože jsem si ji zvolil jako výchozí knihovnu pro interakci se zapůjčeným panel v rámci této práce a do upstreamu se dostalo pár změn, které jsem připravil ve svém forku. 
 
-\paragraph{PlatformIO} Původní verze Inkplate ESP-IDF byla připravena pro integraci v platformě PlatformIO. Ta slouží jako nástroj usnadňující práci s vývojovými prostředími embedded systémů. Sjednocuje tak příkazy pro inicializaci správné verze prostředí, konfiguraci parametrů desky, sestavení, flash apod \cite{WhatPlatformIOPlatformIO}. V době, kdy jsem ale projekt zakládal, nepodporovalo PlatformIO IDF verze 5.0 a nefungovala mi její integrace v prostředí editoru CLion. Naštěstí bylo potřeba jen vytvořit soubor \verb|CMakeLists.txt| registrující knihovnu jako komponentu ESP-IDF a zdokumentovat ruční instalaci knihovny do existujících ESP-IDF projektů.
+\paragraph{PlatformIO} Původní verze Inkplate ESP-IDF byla připravena pro integraci v platformě PlatformIO. Ta slouží jako nástroj usnadňující práci s vývojovými prostředími embedded systémů. Sjednocuje tak příkazy pro inicializaci správné verze prostředí, konfiguraci parametrů desky, sestavení, flash apod \cite{WhatPlatformIOPlatformIO}. V době, kdy jsem ale projekt zakládal, nepodporovalo PlatformIO IDF verze 5.0 a nefungovala mi její integrace v prostředí editoru CLion. Naštěstí bylo potřeba jen vytvořit soubor \lstinline|CMakeLists.txt| registrující knihovnu jako komponentu ESP-IDF a zdokumentovat ruční instalaci knihovny do existujících ESP-IDF projektů.
 
-\paragraph{ESP-IDF v5.0} Ve verzi 5.0 ESP-IDF přineslo řadu nových funkcí a zároveň i množství zpěně nekompatibilních změn. Knihovna s touto verzí nebyla kompatiblní. IDF změnilo verzi GCC a s ní verzi cílového standardu C++. Ve verzi C++20 byla například odebrána podpora smíšeného bitového přiřazení volatilních typů \cite{jtcDedeprecatingVolatileCompound}. V rámci knihovny ESP-IDF se zase změnily názvy některých konstant\cite{PeripheralsESP32S2ESPIDF} a byl odebrána stará verz ovladače SD karty \cite{StorageESP32S2ESPIDF}, kterou Inkplate ESP-IDF interně používal. Jednotlivé rozbité části jsem opravil a byly připojeny do větve \verb|idf-v5.0-support| upstream repozitáře \cite{WIPInitialSupport}. 
+\paragraph{ESP-IDF v5.0} Ve verzi 5.0 ESP-IDF přineslo řadu nových funkcí a zároveň i množství zpěně nekompatibilních změn. Knihovna s touto verzí nebyla kompatiblní. IDF změnilo verzi GCC a s ní verzi cílového standardu C++. Ve verzi C++20 byla například odebrána podpora smíšeného bitového přiřazení volatilních typů \cite{jtcDedeprecatingVolatileCompound}. V rámci knihovny ESP-IDF se zase změnily názvy některých konstant\cite{PeripheralsESP32S2ESPIDF} a byl odebrána stará verz ovladače SD karty \cite{StorageESP32S2ESPIDF}, kterou Inkplate ESP-IDF interně používal. Jednotlivé rozbité části jsem opravil a byly připojeny do větve \lstinline|idf-v5.0-support| upstream repozitáře \cite{WIPInitialSupport}. 
 
-\paragraph{Chyba certifikátu} Knihovna podporovala načítání obrázků ze vzdálené http adresy, ale padala při snaze o načtení https adres. Bylo nutné přiřadit do interního síťového klienta balík s certifikáty \cite{MenuconfigVariantSelection}.
+\paragraph{Chyba certifikátu} Knihovna podporovala načítání obrázků ze vzdáleného http serveru, ale padala při snaze o načtení https adres. Bylo nutné přiřadit do interního síťového klienta balík s certifikáty \cite{MenuconfigVariantSelection}.
 
-\paragraph{Znovunavázání Wi-Fi spojení} Inkplate ESP-IDF obsahuje pomocnou funkci \verb|Display::joinAP()|, pro usnadnějí připojení desky k síti. Při testování jsem ale, bohužel, zjistil, že se při nepodařeném spojení \verb|joinAp()| již znovu nepřipojí. Na vině bylo chybné resetování adaptéru ESP-NETIF a kontroly připojeného stavu \cite{MenuconfigVariantSelection}
+\paragraph{Znovunavázání Wi-Fi spojení} Inkplate ESP-IDF obsahuje pomocnou funkci \lstinline|Display::joinAP()|, pro usnadnění připojení desky k síti. Při testování jsem ale, bohužel, zjistil, že se při nepodařeném spojení \lstinline|joinAp()| již znovu nepřipojí. Na vině bylo chybné resetování adaptéru ESP-NETIF a kontroly připojeného stavu \cite{MenuconfigVariantSelection}
+
+\paragraph{Velikost firmwaru} Při vývoji jsem narazil na problém nedostatku místa na flash paměti mikrokontroleru. V jeden moment mi, i po deaktivaci nepotřebných modulů v konfiguraci ESP-IDF, zbývalo jen 48 kB, tedy zhruba 3 \% volného místa na oddílu aplikace. Ve výpisu nástroje \lstinline|idf.py size-components| se zdála původcem problému komponenta \lstinline|libstdc++.a| zabírající přes 201 kB paměti. O 70 \% více než druhá největší komponenta \lstinline|libstdc.a|. Já jsem však ve svém kódu žádné hlavičky, které by měly vést k takovému nárůstu velikosti ve svém kódu neobjevil. Dle dokumentace jsem zaměnil implementaci formátování řetězců za Newlib Nano \cite{MinimizingBinarySize}. Tato změna sama o sobě způsobila zmizení \lstinline|libstdc.a| ze seznamu největších komponent a uvolnila dalších 100 kB místa. \lstinline|libstdc++.a| ale stále zůstala jako hlavní problém a optimalizace kompilátoru a prostředí mi už nepomáhaly. Po průchodu vlastním kódem jsem začal analyzovat kód knihovny Inkplate ESP-IDF. V té \lstinline|libstdc++.a| též figurovala jako největší komponenta projektu. Čirou náhodou jsem v souboru ovladače pro variantu Inkplate 10 narazil na nepoužívanou inkluzi hlavičky \lstinline|iostream|. Po jejím odstranění \lstinline|libstdc++.a| též zmizela ze seznamu a v kombinaci s touto změnou se volné místo na flash paměti rozšířilo o dalších 15 \%. Na konci optimalizací jsem skončil s 26 \% volné místa na oddílu aplikace.
 
 
 \begin{lstlisting}[label=src:esp-idf-hello-world,language=C++,caption={Ukázka programu pro vykreslení kružnice a Hello World řetězce pomocí ESP-IDF knihovny}]

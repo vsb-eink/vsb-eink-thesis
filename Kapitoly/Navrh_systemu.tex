@@ -1,16 +1,47 @@
 \chapter{Návrh systému}
 
-Od počátku jsem navrhoval systém tak, aby panel byl co možná nejhloupější 
+Od počátku jsem navrhoval systém tak, aby panel byl co možná nejhloupější. Panel by měl jen naslouchat příkazům serveru a ty provádět. To zahrnuje příjem zobrazených dat jen ve formě bitmapových obrázků. Všechna obrazová data jsou díky tomu uniformní a ze strany serveru je možné pevně nastavit každý jednotlivý pixel.
 
-\section{Vývoj návrhu}
-\subsection{Websocket klient}
+Dále jsem věděl, že systém bude mít vždy alespoň tři části. Panel, který bude naslouchat příkazům serveru. Server, který bude udržovat nějakým způsobem komunikaci s panely. A pak klient, který bude skrze server panely ovládat. Primárně jsem nechtěl spojovat server s klientem v jeden monolit, aby bylo snazší projekt v budoucnu rozšířit například o mobilní nebo terminálovou aplikaci.
+
+\section{Nedokončené návrhy a implementace}
+Na projektu jsem pracoval průběžně v rámci celých tří let. V průběhu této doby systém prošel mnoha změnami a několika plnými přepisy. Zde jsou vybrány tři verze, které se dostaly do funkčních fází.
+
+\subsection{Hamilton}
+Pojmenován po softwarové inženýrce Margaret Hamilton, má první seriozní implementace systému spočívala v komunikaci panelu a serveru přes protokol WebSocket. Zprávy byly ve formátu JSON a server sloužil jen jako prostředník mezi klientem a panely. Server udržoval s panely udržoval spojení a klient mohl přes HTTP API serveru poslat panelům zprávu.
+
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}[node distance=2cm]
+        \node (server) [rect]  {server};
+        \node (panel) [rect, below left of=server] {panel};
+        \node (klient) [rect, below right of=server] {klient};
+        \draw[->] (panel) -- (server) node[midway, left] {websocket};
+        \draw[->] (klient) -- (server) node[midway, right] {http};
+    \end{tikzpicture}
+    \caption{Diagram architektury první verze systému}
+    \label{fig:first-system-architecture}
+\end{figure}
+
+\subsubsection{Server}
+Server měl jen čtyři endpointy a byl založen technologii Node.js a frameworku fastify.
+
+\paragraph*{/:panelId} Sloužil k připojení panelu k serveru pomocí WebSocket spojení. Podle atributu \lstinline{panelId} byl panel identifikován a přidán do seznamu běžících panelů. Udržována bylo jeho id, ip adresa a status.
+\paragraph*{/panels} Vracel seznam připojených panelů k serveru.
+\paragraph*{/images/:imageName} Statické soubory obrázků.
+\paragraph*{/panels/broadcast} Očekával zprávu ve formátu JSON, kterou poté přeposlal panelům. Pokud zpráva byla typu DRAW\_IMAGE\_FROM\_URL, server si z adresy vyrobil hash, obrázek stáhl, upravil jeho velikost, převedl do JPEG formátu v odstínech šedi a uložil do lokální složky pod vygenerovaným hashem. Panelům pak zprávu přeposlal s adresou převedeného obrázku hostovaného na adrese serveru.
+
+\subsubsection{Panel}
+Firmware panelu byl založen na prostředí ESP-IDF a knihovny Inkplate ESP-IDF. Podporoval osm druhů příkazů a upozornění na stisknutí kapacitních tlačítek. Firmware byl rozdělen do pěti souběžných vláken, implementovaných pomocí FreeRTOS tasků. Vlákna mezi sebou komunikovaly přes sdílenou smyčku událostí.
+
 \subsection{Cron}
 
 \section{Konečný návrh}
-    \subsection{Scheduler}
-    \subsection{Hoster}
-    \subsection{Renderer}
-    \subsection{Compressor}
-    \subsection{Grouper}
-    \subsection{Panel}
-    \subsection{Facade}
+
+\subsection{Scheduler}
+\subsection{Hoster}
+\subsection{Renderer}
+\subsection{Compressor}
+\subsection{Grouper}
+\subsection{Panel}
+\subsection{Facade}

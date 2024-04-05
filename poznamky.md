@@ -1,3 +1,6 @@
+# Před úpravami
+
+
 ## I. Úvod
 * Cíle práce
 * Motivace a význam práce
