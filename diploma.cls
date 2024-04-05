@@ -29,7 +29,6 @@
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesClass{diploma}[\filedate\space \fileversion\space diploma LaTeX document class]
 \RequirePackage{ifthen}
-\RequirePackage[utf8]{inputenc}
 \newcommand{\Dipl@BachelorThesis}{0}
 \newcommand{\Dipl@BachelorPractice}{1}
 \newcommand{\Dipl@MasterThesis}{2}
