@@ -55,19 +55,19 @@ Kromě standardní knihovny C/C++ obsahuje SDK funkce pro přístup k hardwaru �
 Soldered Electronics pro své panely vyvíjí a udržuje knihovny pro dvě vývojové platformy. Arduino a MicroPython. Nabízejí jednotné API pro práci s jakýmkoliv panelem od této společnosti. Obě pokrývají všechny základní potřeby pro interakci s displejem, přístup k hardwaru specifického pro jednotlivé panely a řadu pomocných funkcí např. pro dekódování obrázků či připojení k síti Wi-Fi.
 
 \begin{table}[h]
-\centering
-\caption{Srovnán aktivity repozitářů knihoven pro vývoj pro panely Inkplate (větev master, 02.04.2024)}
-\label{tab:inkplate-library-comparison}
-\begin{tabular}{llll}
-\multicolumn{1}{c}{}
-    & Inkplate Arduino\cite{SolderedElectronicsInkplateArduinolibrary2024}
-    & Inkplate MicroPython\cite{SolderedElectronicsInkplatemicropythonMicropython}
-    & Inkplate ESP-IDF\cite{turcotteTurgu1ESPIDFInkPlate2024} \\ \hline
-první commit             & 15.12.2019 & 17.08.2020  & 23.12.2019 \\
-poslední commit          & 01.04.2024 & 19.02.2024  & 09.02.2023 \\
-počet commitů            & 1330       & 123         & 162        \\
-ot./uz. issues           & 3/140      & 5/15        & 5/8        \\ \hline
-\end{tabular}
+    \centering
+    \caption{Srovnání aktivity repozitářů knihoven pro vývoj pro panely Inkplate (větev master, 02.04.2024)}
+    \label{tab:inkplate-library-comparison}
+    \begin{tabular}{llll}
+        \multicolumn{1}{c}{}
+            & Inkplate Arduino\cite{SolderedElectronicsInkplateArduinolibrary2024}
+            & Inkplate MicroPython\cite{SolderedElectronicsInkplatemicropythonMicropython}
+            & Inkplate ESP-IDF\cite{turcotteTurgu1ESPIDFInkPlate2024} \\ \hline
+        první commit             & 15.12.2019 & 17.08.2020  & 23.12.2019 \\
+        poslední commit          & 01.04.2024 & 19.02.2024  & 09.02.2023 \\
+        počet commitů            & 1330       & 123         & 162        \\
+        ot./uz. issues           & 3/140      & 5/15        & 5/8        \\ \hline
+    \end{tabular}
 \end{table}
 
 \subsubsection{Inkplate Arduino}
@@ -156,22 +156,11 @@ if __name__ == "__main__":
 \subsection{Komunitní knihovny}
 \subsubsection{Inkplate ESP-IDF}
 
-Třetí oficiálně doporučenou knihovnou je Inkplate ESP-IDF. Ta však není vyvíjena přímo společností Soldered Electronics, ale vývojářem Guyem Turcottem. Jde o port původní Inkplate Arduino knihovny do prostředí ESP-IDF a platformy PlatformIO. Turcott původní knihovnu z velké části přepsal tak, aby závisela jen na nativní standardní knihovně ESP-IDF, používala C++ syntaxi a bylo minimalizováno využití maker \cite{ESPIDFInkPlateREADMEMd}.
+Třetí oficiálně doporučenou knihovnou je Inkplate ESP-IDF. Ta však není vyvíjena přímo společností Soldered Electronics, ale vývojářem Guyem Turcottem. Jde o port původní Inkplate Arduino knihovny do prostředí ESP-IDF a platformy PlatformIO. Turcott původní knihovnu z velké části přepsal tak, aby závisela jen na nativní standardní knihovně ESP-IDF, používala C++ syntaxi a bylo minimalizováno využití maker \cite{ESPIDFInkPlateREADMEMd}. Je nejsnadnější k integraci do čistě ESP-IDF prostředí bez nutnosti záviset na vrstvě kompatiblity Arduino-ESP32.
 
 Port vznikl pro účely Turcottova projeku čtečky elektronických knih. Čtečka byla určena pro osobou mu blízkou, která po úrazu utrpěla poranění míchy a zůstala upoutána na lůžku jen s omezeným pohybem končetin. Turcott jí symbolicky projekt věnoval, po její smrti na Covid-19, koncem roku 2020 \cite{turcotteTurgu1EPubInkPlate2024}.
 
-Na této knihovně mám částečný podíl i já, protože jsem si ji zvolil jako výchozí knihovnu pro interakci se zapůjčeným panel v rámci této práce a do upstreamu se dostalo pár změn, které jsem připravil ve svém forku. 
-
-\paragraph{PlatformIO} Původní verze Inkplate ESP-IDF byla připravena pro integraci v platformě PlatformIO. Ta slouží jako nástroj usnadňující práci s vývojovými prostředími embedded systémů. Sjednocuje tak příkazy pro inicializaci správné verze prostředí, konfiguraci parametrů desky, sestavení, flash apod \cite{WhatPlatformIOPlatformIO}. V době, kdy jsem ale projekt zakládal, nepodporovalo PlatformIO IDF verze 5.0 a nefungovala mi její integrace v prostředí editoru CLion. Naštěstí bylo potřeba jen vytvořit soubor \lstinline|CMakeLists.txt| registrující knihovnu jako komponentu ESP-IDF a zdokumentovat ruční instalaci knihovny do existujících ESP-IDF projektů.
-
-\paragraph{ESP-IDF v5.0} Ve verzi 5.0 ESP-IDF přineslo řadu nových funkcí a zároveň i množství zpěně nekompatibilních změn. Knihovna s touto verzí nebyla kompatiblní. IDF změnilo verzi GCC a s ní verzi cílového standardu C++. Ve verzi C++20 byla například odebrána podpora smíšeného bitového přiřazení volatilních typů \cite{jtcDedeprecatingVolatileCompound}. V rámci knihovny ESP-IDF se zase změnily názvy některých konstant\cite{PeripheralsESP32S2ESPIDF} a byl odebrána stará verz ovladače SD karty \cite{StorageESP32S2ESPIDF}, kterou Inkplate ESP-IDF interně používal. Jednotlivé rozbité části jsem opravil a byly připojeny do větve \lstinline|idf-v5.0-support| upstream repozitáře \cite{WIPInitialSupport}. 
-
-\paragraph{Chyba certifikátu} Knihovna podporovala načítání obrázků ze vzdáleného http serveru, ale padala při snaze o načtení https adres. Bylo nutné přiřadit do interního síťového klienta balík s certifikáty \cite{MenuconfigVariantSelection}.
-
-\paragraph{Znovunavázání Wi-Fi spojení} Inkplate ESP-IDF obsahuje pomocnou funkci \lstinline|Display::joinAP()|, pro usnadnění připojení desky k síti. Při testování jsem ale, bohužel, zjistil, že se při nepodařeném spojení \lstinline|joinAp()| již znovu nepřipojí. Na vině bylo chybné resetování adaptéru ESP-NETIF a kontroly připojeného stavu \cite{MenuconfigVariantSelection}
-
-\paragraph{Velikost firmwaru} Při vývoji jsem narazil na problém nedostatku místa na flash paměti mikrokontroleru. V jeden moment mi, i po deaktivaci nepotřebných modulů v konfiguraci ESP-IDF, zbývalo jen 48 kB, tedy zhruba 3 \% volného místa na oddílu aplikace. Ve výpisu nástroje \lstinline|idf.py size-components| se zdála původcem problému komponenta \lstinline|libstdc++.a| zabírající přes 201 kB paměti. O 70 \% více než druhá největší komponenta \lstinline|libstdc.a|. Já jsem však ve svém kódu žádné hlavičky, které by měly vést k takovému nárůstu velikosti ve svém kódu neobjevil. Dle dokumentace jsem zaměnil implementaci formátování řetězců za Newlib Nano \cite{MinimizingBinarySize}. Tato změna sama o sobě způsobila zmizení \lstinline|libstdc.a| ze seznamu největších komponent a uvolnila dalších 100 kB místa. \lstinline|libstdc++.a| ale stále zůstala jako hlavní problém a optimalizace kompilátoru a prostředí mi už nepomáhaly. Po průchodu vlastním kódem jsem začal analyzovat kód knihovny Inkplate ESP-IDF. V té \lstinline|libstdc++.a| též figurovala jako největší komponenta projektu. Čirou náhodou jsem v souboru ovladače pro variantu Inkplate 10 narazil na nepoužívanou inkluzi hlavičky \lstinline|iostream|. Po jejím odstranění \lstinline|libstdc++.a| též zmizela ze seznamu a v kombinaci s touto změnou se volné místo na flash paměti rozšířilo o dalších 15 \%. Na konci optimalizací jsem skončil s 26 \% volné místa na oddílu aplikace.
-
+Na této knihovně mám částečný podíl i já, protože jsem si ji zvolil jako výchozí knihovnu pro interakci se zapůjčeným panel v rámci této práce a do upstreamu se dostalo pár změn, které jsem připravil ve forku, který jsem použil ve výsledném projektu.
 
 \begin{lstlisting}[label=src:esp-idf-hello-world,language=C++,caption={Ukázka programu pro vykreslení kružnice a Hello World řetězce pomocí ESP-IDF knihovny}]
 #include "inkplate.hpp"

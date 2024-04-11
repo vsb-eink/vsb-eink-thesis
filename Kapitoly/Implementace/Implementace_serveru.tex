@@ -1,8 +1,354 @@
 \section{Implementace serveru}
+Server je implementován jako skupina služeb komunikující mezi sebou pomocí protokolu MQTT a HTTP. Všechny služby stojí na runtimu Node.js a jazyku TypeScript. Pro usnadnění vývoje byly přesunuty ze samostatných repozitářů do struktury monorepozitáře, včetně kódu klientské aplikace. Monorepozitář je spravován nástrojem PNPM.
+
+\subsubsection{Použité nástroje}
+\begin{itemize}
+    \item editor: WebStorm
+    \item runtime: Node.js
+    \item jazyky: TypeScript
+    \item dokumentace: OpenAPI
+    \item databáze: PostgreSQL, SQLite
+    \item knhovny:
+        \begin{itemize}
+            \item HTTP server --> Fastify\cite{FastifyFastify2024}
+            \item Validace HTTP requestů --> Fastify + TypeBox\cite{sinclairzx81Sinclairzx81Typebox2024}
+            \item MQTT klient --> MQTT.js\cite{MqttjsMQTTJs}
+            \item ORM --> Prisma\cite{PrismaPrisma2024}
+        \end{itemize}
+\end{itemize}
+
+\subsubsection{Struktura repozitáře}
+\begin{itemize}
+    \item .github/
+        \begin{itemize}
+            \item obsahuje soubory pro GitHub CI/CD
+        \end{itemize}
+    \item apps/
+        \begin{itemize}
+            \item obsahuje frontendové aplikace
+        \end{itemize}
+    \item packages/
+        \begin{itemize}
+            \item obsahuje balíčky pro jednotnou konfiguraci nástrojů eslint, typescript a prettier
+            \item obsahuje balíčky REST API klientů
+        \end{itemize}
+    \item patches/
+        \begin{itemize}
+            \item obsahuje patche externích balíčků
+        \end{itemize}
+    \item services/
+        \begin{itemize}
+            \item obsahuje jednotlivé služby serveru
+        \end{itemize}
+\end{itemize}
 
 \subsection{Scheduler}
+\subsubsection{Datový model}
+Data jsou ukládána lokálně v SQLite databázi. Schéma, migrace a ORM klient jsou spravovány pomocí nástroje Prisma. Služba pracuje jen s jedinou tabulkou \lstinline|EInkJob|, kde každý záznam označuje jeden naplánovaný úkol. Z atributů je důležité zmínit \lstinline|content|, který označuje seznam argumentů příkazu odeslaný jako obsah zprávy. Ten je ukládán jako řetezec a aplikace je zodpovědná za jeho dekódování při čtení a kódování při zápisu. \lstinline|precise| označuje rozlišení výrazu cron, zda obsahuje sloupec vteřin či ne. \lstinline|shouldCycle| označuje, jakým způsobem má být vybrán argument příkazu. \lstinline|priority| označuje prioritu úkolu, čím vyšší číslo, tím vyšší priorita.
+
+\begin{lstlisting}[label=src:scheduler-schema,caption={Datové schéma třídy EInkJob}]
+model EInkJob {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  cron        String
+  target      String
+  command     String
+  content     String  @default("[]")
+  precise     Boolean @default(false)
+  priority    Int     @default(0)
+  cycle       Int     @default(0)
+  shouldCycle Boolean @default(false)
+  disabled    Boolean @default(false)
+  @@unique([target, cron])
+}
+\end{lstlisting}
+
+\subsubsection{Plánovač}
+Plánování funguje na principu pravidelného dotazu do databáze, kde se vyhledávají všechny nedeaktivované úkoly. Samotné vlákno plánovače je implementováno pomocí knihovny Piscina. Ta nad Node.js API Worker Threads poskytuje transparentní implementaci poolu vláken.
+
+Při dotazu je zohledněna preciznosti úkolu, priorita a stav aktivace. Výsledky jsou seřazeny nejdříve podle preciznosti vzestupně, poté dle priority sestupně a dle identifikátoru cíle opět vzestupně. Preciznost je brána podle rozlišení výrazu cron, ne však podle přenosti spuštění. Výsledky s nižší precizností jsou spuštěny před výsledky s precizností nižší protože u nich uživatel očekává spuštění v daný čas, protože mají nižší frekvenci opakování. Tato volba je otevřena diskuzi.
+
+U každého úkolu je zkontrolován jeho výraz cron. V případě, že výraz popisuje aktuální čas, je úkol zpracován k publikaci. K vyhodnocení výrazu je použita knihovna \lstinline{cron-schedule}, která je použita i k plánování spuštěných smyček.
+
+Zpráva je publikována pod topicem \lstinline|vsb-eink/{target}/{command}| s tím, že proměnné \lstinline{target} a \lstinline{command} jsou přímo převzaté z položky úkoly z databáze. Pokud je atribut \lstinline{isCyclable} nastaven na \lstinline{true}, tělem zprávy je hodnota na pozici \lstinline{cycle} ze seznamu argumentů příkazu z atributu \lstinline{content} úkolu. V případě, že je hodnota atributu \lstinline{isCyclable} \lstinline{false}, je tělem zprávy první argument ze seznamu. Pokud úkol žadné argumenty nemá, je tělem zprávy prázdný řetězec.
+
+\subsubsection{REST API}
+\paragraph*{/jobs} Endpoint pro CRUD operace nad tabulkou entit \lstinline{EInkJob}. Úkoly lze filtrovat podle atributů \lstinline{target}, \lstinline{precise} a \lstinline{disabled}. Pro účely mazání více úkolů najednou je při použití metody DELETE možné specifikovat více úkolů najednou query parametrem \lstinline{ids}.
+\paragraph*{/jobs/\{id\}} Endpoint pro CRUD operace nad specifickým úkolem.
+
+\subsubsection{Konfigurace}
+Služba je konfigurovatelná skrze proměnné prostředí. V případě existence souboru \lstinline|.env| v pracovním adresáři, jsou proměnné načteny i z tohoto souboru.
+
+\begin{table}[h]
+    \begin{tabular}{ll}
+        MQTT\_HOST & adresa MQTT brokeru \\
+        MQTT\_PORT & port MQTT brokeru \\
+        API\_HOST & adresa, na které služba naslouchá \\
+        API\_PORT & port, na kterém služba naslouchá \\
+        DATABASE\_URL & adresa databáze \\
+    \end{tabular}
+\end{table}
+
 \subsection{Hoster}
+\subsubsection{Uživatelský obsah}
+Primárním úkolem služby je spravovat soubory nahrané uživateli. Soubory jsou ukládány do složky určené proměnnou \lstinline{USER\_CONTENT\_PATH}.
+
+Pokud soubor končí příponou \lstinline|.mts|, \lstinline|.ts|, \lstinline|.mjs| nebo \lstinline|.js|, je takový soubor považován za dynamický a je při dotazu na něj načten jako modul. Očekává se, že obsahuje Fastify handler pro zpracování příchozího HTTP požadavku, který je exportován jako výchozí export modulu. Pokud se ze souboru nepodaří handler načíst, je soubor vrácen v odpovědi jako jakýkoliv jiný statický soubor. Závislosti modulu jsou totožné s rodičovským serverem. Soubory \lstinline|index.{mts,ts,mjs,js}| jsou považovány za výchozí soubor složky a jsou tak vhodné k vytvoření hezké cesty URL.
+
+\subsubsection{REST API}
+API je rozděleno na části, \lstinline|/core| a \lstinline|/user|. \lstinline|/core| je určen pro správu hostovaných souborů a očekává se určitý způsob autorizace požadavků. \lstinline|/user| je naopak určen pro neautorizované požadavky s širším okruhem použití.
+
+\paragraph*{/user/\{path\}} Hostuje statické i dynamické uživatelské soubory. Statické soubory s prefixem \lstinline{_} jsou považovány za soukromé a server při požadavku na ně vrátí status 404.
+
+\paragraph*{/core/proxy/\{url\}}
+Pomocný endpoint pro přístup k externím zdrojům, které by za normálních okolností nebyly přístupné. Vhodný například pro načítání externích API bez potřebných CORS hlaviček z HTML stránek vykreslovaných službou Renderer.
+
+\paragraph*{/core/files/\{path\}}
+Provádí CRUD operace nad uživatelskými soubory. Pro vkládání souborů je očekáván typ \lstinline|multipart/form-data| a lze nahrávat více souborů naráz. Složky lze vytvořit metodami POST/PUT a parametrem \lstinline|path| s cestou nové složky. Endpoint nazpět odpovídá typem \lstinline|application/json|.
+
+\begin{lstlisting}[label=src:get-files-response,caption={Odpověď na dotaz GET /core/files/}]
+{
+    "name": "public",
+    "path": "",
+    "type": "directory",
+    "children": [
+        {
+            "name": "example",
+            "path": "example",
+            "type": "directory",
+            "children": [
+                {
+                    "name": "index.ts",
+                    "path": "example/index.ts",
+                    "type": "file"
+                }
+            ]
+        },
+        {
+            "name": "lena.png",
+            "path": "lena.png",
+            "type": "file"
+        }
+    ]
+}
+\end{lstlisting}
+
+\subsubsection{Konfigurace}
+Konfigurace je prováděna pomocí proměnných prostředí a případného souboru \lstinline{.env}.
+
+\begin{table}[h]
+    \begin{tabular}{ll}
+        API\_HOST & adresa, na které služba naslouchá \\
+        API\_PORT & port, na kterém služba naslouchá \\
+        USER\_CONTENT\_PATH & kořen složky obsahující uživatelské soubory \\
+    \end{tabular}
+\end{table}
+
+\vfill
+
 \subsection{Renderer}
+\subsubsection{Vykreslování HTML}
+Služba naslouchá MQTT zprávám obsahující HTML soubor nebo webovou adresu. Webový obsah je zkontrolován http požadavkem s metodou HEAD. Pokud odpověď neobsahuje hlavičku s \lstinline|Content-Type: text/html|, je zpráva ignorována. Pokud je přijata MQTT zpráva se souborem HTML, je obsah souboru převeden na řetězec Data URL tak, aby s ním bylo dále možné zacházet jako s běžnou URL adresou a zároveň nemusel být uložen do souborového systému.
+
+Pro vykreslení je použita knihovna Playwright a webový prohlížeč Chromium. Soubory prohlížeče jsou verzovány spolu se službou a jsou nainstalovány automaticky spolu s ostatními knihovnami. Při startu služby je vytvořena nová instance prohlížeče v režimu headless, režimu bez grafického rozhraní. Při každém požadavku na vykreslení, je vytvořen nový kontext prohlížeče s velikostí okna dle rozlišení panelu. V nově vytvořeném kontextu je otevřena nová záložka a načtena přijatá webová adresa. Po načtení stránky je vytvořen snímek obrazovky ve formátu PNG. Snímek je pak publikován na topicu \lstinline|vsb-eink/{target}/display/png_{mode}/set|, kde \lstinline|mode| je hodnoty \lstinline|1bpp|/\lstinline|4bpp| podle přijatého požadavku.
+
+\subsubsection{MQTT API}
+\paragraph*{SUB vsb-eink/\{panel\_id\}/display/\{content\_type\}\_/\{mode\}/set} Žádost o vykreslení přijatého obsahu. \lstinline|content| může nabývat \lstinline|html| nebo \lstinline|url|. \lstinline|mode| určuje hloubku obrázku pro panel, tedy \lstinline|1bpp| nebo \lstinline|4bpp|.
+
+\paragraph*{PUB vsb-eink/\{panel\_id\}/display/png\_/\{mode\}/set} Odpověď na přijatou zprávu. Obsahuje snímek obrazovky ve formátu PNG v binární podobě.
+
+\subsubsection{Konfigurace}
+Konfigurace je prováděna pomocí proměnných prostředí a případného souboru \lstinline{.env}.
+\begin{table}[h]
+    \begin{tabular}{ll}
+        MQTT\_HOST & adresa MQTT brokeru \\
+        MQTT\_PORT & port MQTT brokeru \\
+    \end{tabular}
+\end{table}
+
 \subsection{Compressor}
+\subsubsection{Převod obrázků}
+Služba Compressor staví na knihovně Sharp \cite{fullerLovellSharp2024} a vlastní implementaci Floyd-Steinberg dithering algoritmu.
+
+Po startu se služba zaregistruje k poslechu všech kombinací možných variant topicu \lstinline|vsb-eink/+/display/{type}_{mode}/set|, kde \lstinline|type| je formát obrázků, které podporuje knihovna Sharp a \lstinline|mode| je režim obrázku pro panel. Do parametru \lstinline|type| je navíc přidán i formát \lstinline|url|, jehož zpráva je kontrolována podobně jako u služby Renderer.
+
+Při kompresi obrázku je nejdříve obrázek převeden do odstínů šedi, poté je zredukován na jeden barevný kanál a zmenšen na rozlišení panelu. Poté je na něj aplikován dithering s kjvantizační funkcí, která zaokrouhlí pixel na nejbližší kvantizační hladinu vypočtenou lineárně dle zadaného počtu hladin.
+
+\begin{lstlisting}[label=src:quantise-func,caption={Implementace univerzální kvantizační funkce použité při kompresi barev obrázků}]
+export type QuantiseFunc = (pixel: number) => number;
+export function createLinearQuantiser(levels: number): QuantiseFunc {
+	const step = 256 / (levels - 1);
+	return (pixel: number) => Math.round(pixel / step) * step;
+}
+\end{lstlisting}
+
+Při ditheringu je použit algoritmus Floyd-Steinberg, při němž je rozdíl v barvě každého bodu rozdělen do čtyř sousedících pixelů.
+
+\begin{lstlisting}[label=src:floydsteinberg-func,caption={Implementace Floyd-Steinbergova dithering algoritmu}]
+export function floydSteinberg(source: Readonly<ImageData>, quantise: QuantiseFunc): ImageData {
+	const destination: ImageData = {
+		data: new Uint8ClampedArray(source.data),
+		width: source.width,
+		height: source.height,
+	};
+	for (let y = 0; y < destination.height; ++y) {
+		for (let x = 0; x < destination.width; ++x) {
+			const originalPixel = getPixel(destination, x, y);
+			const quantisedPixel = clamp(quantise(originalPixel), 0, 255);
+			const error = originalPixel - quantisedPixel;
+			setPixel(destination, x, y, quantisedPixel);
+			addToPixel(destination, x + 1, y, error * (7 / 16));
+			addToPixel(destination, x - 1, y + 1, error * (3 / 16));
+			addToPixel(destination, x, y + 1, error * (5 / 16));
+			addToPixel(destination, x + 1, y + 1, error * (1 / 16));
+		}
+	}
+
+	return destination;
+}
+\end{lstlisting}
+
+Obrázek je potom zkompresován do potřebné bitové hloubky a zabalen do binárního formátu, jaký je očekáván panelem.
+
+\subsubsection{MQTT API}
+\paragraph*{SUB vsb-eink/\{panel\_id\}/display/\{type\}\_\{mode\}/set}
+Zpráva s obrázkem ke kompresi. \lstinline|type| může nabývat formátů \lstinline|jpg|, \lstinline|jpeg|, \lstinline|png|, \lstinline|webp|, \lstinline|gif|, \lstinline|avif|, \lstinline|svg| nebo \lstinline|tiff|. \lstinline|mode| označuje režim obrázku panelu \lstinline|1bpp| a \lstinline|4bpp|.
+
+\paragraph*{PUB vsb-eink/\{panel\_id\}/display/raw\_\{mode\}/set}
+Odpověď na přijatou zprávu. Formát obrázku je vždy v binární podobě určené pro panel.
+
+\subsubsection{Konfigurace}
+Konfigurace je prováděna pomocí proměnných prostředí a případného souboru \lstinline{.env}.
+\begin{table}[h]
+    \begin{tabular}{ll}
+        MQTT\_HOST & adresa MQTT brokeru \\
+        MQTT\_PORT & port MQTT brokeru \\
+    \end{tabular}
+\end{table}
+
 \subsection{Grouper}
+\subsubsection{Datový model}
+Služba pracuje jen se dvěma tabulkami. \lstinline|Panel| a \lstinline|Group| pro uložení vazby panelu a skupin panelů.
+
+\begin{lstlisting}[label=src:grouper-schema,caption={Schém}]
+model Group {
+  id     String  @id
+  name   String?
+  panels Panel[] @relation("GroupToPanel")
+}
+
+model Panel {
+  id     String  @id
+  name   String?
+  groups Group[] @relation("GroupToPanel")
+}
+\end{lstlisting}
+
+\subsubsection{Rozřazování zpráv}
+Služba naslouchá na topicích \lstinline|vsb-eink/+/display/raw_1bpp/set| a \lstinline|vsb-eink/+/display/raw_4bpp/set|. Z topicu vyparsuje id panelu a vyhledá ho v tabulce skupin. Pokud nalezne záznam, přepošle přijatou zprávu všem panelům z nalezené skupiny.
+
+\subsubsection{MQTT API}
+\paragraph*{SUB vsb-eink/\{panel\_id\}/display/raw\_\{mode\}/set}
+Zpráva s obrázkem ke kompresi.
+
+\paragraph*{PUB vsb-eink/\{panel\_id\}/display/raw\_\{mode\}/set}
+Zpráva s obrázkem k zobrazení na panelu. Odpověď na přijatou zprávu.
+
+\subsubsection{REST API}
+HTTP API má dva endpointy a slouží k základním CRUD operacím nad oběma tabulkami databáze. Pro potřeby synchronizace navíc podporuje metodu PUT i na seznamu obou entit. Je tedy možné jediným požadavkem přepsat efektivně celou tabulku záznamů.
+
+\paragraph*{/panels}
+Nabízí veškeré CRUD operace nad tabulkou \lstinline|Panel|. \lstinline|/jobs/{panel_id}| umožňuje číst upravovat specifický panel.
+
+\paragraph*{/groups}
+Nabízí veškeré CRUD operace nad tabulkou \lstinline|Group|. \lstinline|/groups/{group_id}| umožňuje číst upravovat specifickou skupinu panelů.
+
+\subsubsection{Konfigurace}
+Konfigurace je prováděna pomocí proměnných prostředí a případného souboru \lstinline{.env}.
+\begin{table}[h]
+    \begin{tabular}{ll}
+        MQTT\_HOST & adresa MQTT brokeru \\
+        MQTT\_PORT & port MQTT brokeru \\
+        API\_HOST & adresa, na které služba naslouchá \\
+        API\_PORT & port, na kterém služba naslouchá \\
+        DATABASE\_URL & adresa databáze \\
+    \end{tabular}
+\end{table}
+
 \subsection{Facade}
+Služba Facade funguje jako hybrid mezi vzory fasáda (facade) a brána (gateway). Většina jejích funkcionalit je delegována ostatním službám a Facade jen přidává zabezpečení volaného API. V jiných případech Facade implementuje dostatek úprav natolik, aby ji již nebylo možné brát za čistou bránu.
+
+\subsubsection{Datový model}
+Facade, jako jediná služba projektu, závisí na databázi PostgreSQL. Tento databázový systém byl zvolen pro svou robustnost a množství funkcionalit plynoucích z jeho výborné podpory nástrojem Prisma. Pomocí nástroje Prisma jsou řešeny i automatické migrace databáze při startu služby.
+
+Ukládány jsou primárně data potřebná k implementaci autorizace uživatelů. Oprávnění k operacím jsou řešena vazbou skupin panelů ke skupině uživatelů. Uživatelská skupina tak má množinu panelů, ke kterým má nějaké pravomoci. Pravomoce jsou též ukládány k uživatelské skupině.
+
+\subsubsection{Synchronizace služeb}
+Protože jsou data panelů uložena v databázi služby Facade separovaně od dat ostatních služeb, může dojít k jejich nekonzistenci. Spolu s hlavním procesem serveru je proto spuštěna úloha synchronizující stav služeb Grouper a Scheduler s databází služby Facade. Při každé mutaci databáze je uložen indikátor nutné synchronizace. Úloha tento indikátor kontroluje každou sekundu a v případě, že je pravdivý, spustí synchronizaci obou služeb. Data jsou nahrána pomocí REST API. V případě služby Grouper jsou data nahrána jediným požadavkem \lstinline|PUT /groups|, který přepíše všechny uložené skupiny panelů. V případě služby Scheduler je stažen seznam všech úkolů z cílové služby a porovnán s lokálně evidovanými panely. Úkoly s cílem \lstinline|target|, který není znám lokálně, jsou smazány požadavkem \lstinline|DELETE /jobs?ids={}|.
+
+\paragraph{Autorizace}
+Pravomoce mají variantu READ/WRITE a vstahují se k jednotlivým cestám REST API. \lstinline|GET /user/5| může například provést jakýkoliv uživatel, který je ve skupině s oprávněním \lstinline{USERS_READ}. Při změně jména uživatele pomocí \lstinline|PATCH /user/5| by bylo potřeba oprávnění \lstinline{USERS_WRITE}.
+
+Každý uživatel má přiřazenou jednu z rolí \lstinline|USER| a \lstinline|ADMIN|. Role \lstinline|ADMIN| funguje jako univerzální klíč ke všem operacím služby bez ohledu na přidělené pravomoce a panely.
+
+Seznam panelů je filtrován podle přidělených panelů. Pokud uživatel je jen ve skupinách, které nemají přidělené žádné panely, při dotazu na seznam panelů dostane prázdnou odpověď. Nový uživatel tak nemá téměř žádná oprávnění a správce mu je musí přidat nebo uživatele přiřadit do nějaké existující skupiny.
+
+Autorizace je kontrolována hooky \lstinline|verifyRole|, \lstinline|verifyScope|, \lstinline|verifyAccessToPanel| \\a \lstinline|verifyAccesToPanelGroup|. Hooky jsou přiřazeny cestám tak, aby byl handler zavolán jen pokud je nějaká z kombinací volání hooků úspěšná. Pro kombinaci strategií ověření je použita knihovna Fastify-Auth\cite{FastifyFastifyauth2024}. Pokud požadavek nesplní ani jednu podmínku, je navrácen status 403.
+
+\begin{lstlisting}[label=src:fastify-auth-hook,caption={Ověření, že požadavek GET /panels/\{panel\_id\} patří uživateli s rolí ADMIN nebo že má přístup k požadovanému panelu}]
+onRequest: app.auth([
+    [verifyJWT, verifyRole(Role.ADMIN)],
+    [verifyJWT, verifyScope(Scope.PANELS_READ), verifyAccessToPanel],
+]),
+\end{lstlisting}
+
+\paragraph{Autentizace}
+Uživatelé jsou autentizováni pomocí tokenů JWT. Ten uživatel obdrží po odeslání dotazu POST se svým přihlašovacím jménem a heslem na endpoint \lstinline|/auth/login|. Hesla jsou v databázi hashována funkcí argon2 imeplementovanou knihovnou node-argon2\cite{althoffRanisaltNodeargon22024}. Token má platnost 30 dní a obsahuje identifikátor uživatele a jeho roli.
+
+Autentizace je kontrolována hookem \lstinline|verifyJWT|, který požadavek zkontroluje, zda obsahuje validní token a pokud ano, načte objekt uživatele do objektu \lstinline|request|, který je poté k dispozici v koncovém handleru. Pokud je požadavek neobsahuje validní token, požadavek je zamítnut a je navrácen status 401.
+
+\subsubsection{REST API}
+Kompletní API je popsáno pomocí OpenAPI specifikace v souboru \lstinline|openapi.yaml| v kořeni služby. Specifikace je napsána ručně a obsahuje každou cestu API, včetně požadovaných pravomocí, stavových kódů a podrobných schémat všech datových typů. Server nabízí i dynamickou specifikaci tvořenou za běhu z registrovaných cest a schémat, ale takový objekt není dostatečně specifický pro proxy endpointy \lstinline|/hosted| a \lstinline|/schedule|. 
+
+\paragraph*{/auth}
+Endpoint určený k autentizaci uživatele.
+
+\paragraph*{/panels}
+Endpoint nabízející CRUD operace nad tabulkou panelů. Primární potřebné pravomoce jsou \lstinline{PANELS_READ} a \lstinline{PANELS_WRITE}.
+
+\paragraph*{/panel-groups}
+Endpoint nabízející CRUD operace nad tabulkou skupin panelů. Primární potřebné pravomoce jsou \lstinline{PANELS_READ} a \lstinline{PANELS_WRITE}.
+
+\paragraph*{/users}
+Endpoint nabízející CRUD operace nad tabulkou uživatelů. Primární potřebné pravomoce jsou \lstinline{USERS_READ} a \lstinline{USERS_WRITE}.
+
+\paragraph*{/user-groups}
+Endpoint nabízející CRUD operace nad tabulkou skupin uživatelů. Primární potřebné pravomoce jsou \lstinline{USERS_READ} a \lstinline{USERS_WRITE}.
+
+\paragraph*{/profile}
+Endpoint pro získání objektu právě přihlášeného uživatele. Oproti výsledku získatelného skrze \lstinline|GET /users| obsauje navíc i agregovaný seznam všech pravomocí.
+
+\paragraph*{/schedule}
+Endpoint pro CRUD operace nad seznamem naplánovaných úkolů. U požadavků ověřuje, zda k nim uživatel má dostatečná oprávnění a pokud ano, požadavek přepošle službě Scheduler. Primární potřebné pravomoce jsou \lstinline{SCHEDULE_READ} a \lstinline{SCHEDULE_WRITE}.
+
+\paragraph*{/hosted}
+Endpoint pro přístup ke službě Hoster. Podobně jako \lstinline|/schedule| ověřuje autorizaci přijatých požadavků a v případě validity je přeposílá cílové službě. Primární potřebné pravomoce jsou \lstinline{HOSTED_READ} a \lstinline{HOSTED_WRITE}.
+
+\paragraph*{/maintenance}
+Endpoint pro jednorázové příkazy určené k údržbě systému. Momentálně nabízí cestu \lstinline|POST /sync|, která vynutí synchronizaci stavu služby Facade s ostatními službami.
+
+\subsubsection{Konfigurace}
+Konfigurace je prováděna pomocí proměnných prostředí a případného souboru \lstinline{.env}.
+\begin{table}[h]
+    \begin{tabular}{ll}
+        API\_HOST & adresa, na které služba naslouchá \\
+        API\_PORT & port, na kterém služba naslouchá \\
+        DEFAULT\_ADMIN\_PASSWORD & výhozí heslo pro uživatele "admin" \\
+        JWT\_SECRET & klíč použitý k podpisu JWT tokenů \\
+        DATABASE\_URL & adresa databáze \\
+        GROUPER\_URL & adresa API služby Grouper \\
+        HOSTER\_URL & adresa API služby Hoster \\
+        SCHEDULER\_URL & adresa API služby Scheduler \\
+    \end{tabular}
+\end{table}

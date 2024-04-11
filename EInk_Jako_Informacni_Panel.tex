@@ -6,10 +6,20 @@
 \usepackage{dcolumn} % sloupce tabulky s ciselnymi hodnotami
 \usepackage{subfig} % makra pro "podobrazky" a "podtabulky"
 \usepackage[cpp]{diplomalst}
-\usepackage{fontspec}
+\usepackage{float}
+\usepackage{microtype}
+
+% Povolit při používání XeLaTex
+%\usepackage{fontspec}
 
 % Knihovna tikz
 \input{tikz}
+
+% Knihovna pgf pgf-umlsd
+\usepackage{pgf-umlsd}
+
+\usepackage{svg}
+\usepackage[export]{adjustbox}
 
 % Zadame pozadovane vstupy pro generovani titulnich stran.
 \ThesisAuthor{Bc. Marek Lukáš}
@@ -67,6 +77,7 @@
 \input{Kapitoly/Navrh_systemu}
 \input{Kapitoly/Implementace}
 \input{Kapitoly/Nasazeni}
+\input{Kapitoly/Vyzvy_do_budoucna}
 \input{Kapitoly/Zaver}
 
 % Seznam literatury
@@ -74,7 +85,36 @@
 
 % Prilohy
 \appendix
-\input{Prilohy/Priloha1}
-\input{Prilohy/Priloha2}
+
+\chapter{Facade API klient}
+\lstinputlisting[label=src:input-getmetadata-openapi,caption={Popis cesty GET /hosted/core/files/\{path\} pomocí OpenAPI}]{Zdrojove kody/input-getmetadata-openapi.yaml}
+\newpage
+\lstinputlisting[label=src:output-getmetadata-openapi,caption={Vygenerovaná funkce getContentMetadata}]{Zdrojove kody/output-getmetadata-client.ts}
+
+\chapter{Snímky obrazovky aplikace}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Obrazky/aplikace/eink.a1314.cz_hosted.png}
+    \caption{Obrazovka seznamu uživatelských souborů}
+    \label{fig:hosted-view}
+\end{figure}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Obrazky/aplikace/eink.a1314.cz_login.png}
+    \caption{Obrazovka přihlášení}
+    \label{fig:login-view}
+\end{figure}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Obrazky/aplikace/eink.a1314.cz_schedule.png}
+    \caption{Obrazovka detailu plánovaného úkolu}
+    \label{fig:schedule-view}
+\end{figure}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Obrazky/aplikace/eink.a1314.cz_usergroup.png}
+    \caption{Obrazovka detailu uživatelské skupiny}
+    \label{fig:usergroup-view}
+\end{figure}
 
 \end{document}

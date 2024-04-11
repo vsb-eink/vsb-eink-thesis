@@ -1,0 +1,16 @@
+@startuml
+[Scheduler] as scheduler
+[Renderer] as renderer
+[Grouper] as grouper
+[Compressor] as compressor
+[Panel] as panel
+
+scheduler -right-> renderer
+scheduler -right-> compressor
+scheduler -right-> grouper
+
+renderer -right-> compressor
+compressor --> grouper
+
+grouper --> panel
+@enduml

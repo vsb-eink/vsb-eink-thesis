@@ -1,0 +1,24 @@
+@startuml
+cloud {
+  [MQTT Broker] as broker
+  folder "MQTT Služby" as services {
+    [Scheduler] as scheduler
+    [Renderer] as renderer
+    [Grouper] as grouper
+    [Compressor] as compressor
+  }
+  [Facade] as facade
+  [Hoster] as hoster
+}
+
+[Panel] as panel
+[Facade Client] as facade_client
+
+panel --> broker : mqtt
+services --> broker : mqtt
+
+services -up-> hoster : http
+facade --> services : http
+facade --> hoster : http
+facade_client -up-> facade : http
+@enduml

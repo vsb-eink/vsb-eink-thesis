@@ -1,9 +1,76 @@
-\chapter{Nasazení}
+\chapter{Sestavení a nasazení}
 
-\section{Sestavení}
-\subsection{CI/CD}
-    \subsubsection{GitHub Actions}
-    \subsubsection{Docker}
+\section{Firmware panelu}
+\subsection{Sestavení}
+K sestavení projektu je potřeba mít na počítači nainstalované prostředí \lstinline|esp-idf v5.0| a verzovací nástroj \lstinline|git|.
 
-\section{Správa}
-\subsection{Docker Compose}
+\begin{enumerate}
+    \item naklonování projektu včetně submodulů \\ \lstinline{git clone --recurse-submodules git@github.com:vsb-eink/vsb-eink-panel.git}
+    \item načtení prostředí \lstinline|esp-idf| \\ \lstinline{. "$IDF_PATH/export.sh"}
+    \item vytvoření vlastního podpisového klíče \\ \lstinline|espsecure.py generate_signing_key certs/secure_boot_signing_key.pem|
+    \item sestavení projektu \\ \lstinline|idf.py build|
+\end{enumerate}
+
+\subsubsection{GitHub Actions}
+Pro účely automatizace a zajištění opakovatelnosti sestavení, je v repozitáři \lstinline|vsb-eink-panel| zajištěno sestavování pomocí služby GitHub Actions. Definice procesu je uložena v souboru \lstinline|.github/workflows/build.yml|. Sestavení je spuštěno při každé úpravě soubory \lstinline|version.txt| v kořeni repozitáře, případně lze vynutit ručně.
+
+\begin{enumerate}
+    \item projekt je naklonován
+    \item verze prostředí ESP-IDF je načtena ze souboru \lstinline|dependendencies.lock|
+    \item verze projektu je načtena ze souboru \lstinline|version.txt|
+    \item podpisový klíč, bezpečně uložený v nastavení projektu jako GitHub Repository Secret\cite{UsingSecretsGitHub}, je zapsán do souboru \lstinline|certs/secure_boot_signing_key.pem|
+    \item projekt se sestaven pomocí funkce \lstinline|espressif/esp-idf-ci-action|
+    \item je publikováno nové vydání firmwaru v sekci Releases pod verzí projektu ze souboru \lstinline|version.txt|
+\end{enumerate}
+
+\subsection{Nasazení}
+Při vývoji nebo sestavování na vlastním stroji je nahrání firmwaru nejjednodušší pomocí příkazu \lstinline|idf.py flash|. Ten projekt sestaví a automaticky nahraje do panelu připojeného přes USB k počítači.
+
+Pro nahrání oficiálního vydání firmwaru, je nutné stáhnout si lokálně soubory \lstinline|bootloader.bin|, \lstinline|partition-table.bin|, \lstinline|ota_data_initial.bin| a \lstinline|vsb-eink-panel.bin| ze sekce Releases repozitáře. Ty lze poté do zařízení nahrát pomocí příkazu \lstinline|esptool.py write_flash|.
+
+\begin{lstlisting}[label=src:panel-firmware-flash, caption={Nahrání oficiálního firmwaru do panelu}]
+esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m 0x1000 bootloader.bin 0x8000 partition-table.bin 0xd000 ota_data_initial.bin 0x10000 vsb-eink-panel.bin
+\end{lstlisting}
+
+Konfigurace panelu je popsána v sekci \ref{konfigurace-panelu}. Připravený konfigurační soubor CSV je poté nutné nahrát do zařízení příkazem \lstinline|python scripts/provision_panel.py --flash path/to/config.csv|.
+
+Aktualizace panelů jsou možné na dálku předáním odkazu na soubor oficiálního vydání \lstinline|vsb-eink-panel.bin| skrze MQTT topic \lstinline|vsb-eink/{panel_id}/firmware/update/set|.
+
+\section{Služby serveru a aplikace}
+\subsection{Sestavení}
+K sestavení projektu je potřeba Node.js 21+ a balíčkový manažer PNPM. Příkazem \lstinline|pnpm -r run build| je možné sestavit všechny komponenty projektu. PNPM při tom volá npm skript \lstinline|build| postupně podle závislostí všech balíčků.
+
+\begin{enumerate}
+    \item naklonování projektu \\ \lstinline{git clone git@github.com:vsb-eink/vsb-eink-services.git}
+    \item instalace závislostí \\ \lstinline{pnpm install}
+    \item vygenerování databázových a HTTP klientů \\ \lstinline{pnpm -r run generate}
+    \item sestavení všech komponent projektu \\ \lstinline{pnpm -r build}
+    \item sestavené soubory jsou poté uloženy v adresářích \lstinline|dist/| jednotlivých komponent 
+\end{enumerate}
+
+\subsection{Nasazení}
+Pro účely nasazení je každá služba zabalena do Docker kontejneru. Jde o platformu umožňující zabalení a spuštění softwaru uvnitř izolovaného prostředí, které s hostujícím systémem sdílí pouze systémové jádro. Pro tvorbu vlastních obrazů kontejnerů je použit soubor Dockerfile popisující jednotlivé kroky stavby. Ve většině případů platí, že pokud program funguje v kontejneru na jednom počítači, měl by fungovat bez úprav i na jakémkoliv jiném počítači s nainstalovaným Dockerem bez ohledu na operační systém a verze knihoven. Navíc, protože je kontejner izolovaný od systému, nabízí vyšší míru bezpečnosti oproti programům spuštěným napřímo. Technologie, na které jsou kontejnery postaveny, jsou specifické pro Linuxové jádro \cite{DockerOverview0200}. 
+
+Všechny komponenty sdílejí stejný Dockerfile umístěný v kořeni repozitáře. Pro efektivní sestavení jednotlivých kontejnerových obrazů je použit tzv. Multi-stage build. Jde o rozdělení Dockerfilu do sekcí, které mohou používat různá prostředí uvnitř stejného kontextu. Praktickým příkladem je například kontejner C++ programu. V jedné sekci lze nainstalovat balíčky kompilátorů a hlaviček a sestavit program do spustitelného souboru. Ve druhé sekci stačí nainstalovat pouze balíčky potřebné ke spuštění programu a sestavený soubor programu zkopírovat z první sekce. Přínosem je snížení velikosti výsledného obrazu \cite{MultistageBuilds0100}. Každá komponenta má svou vlastní sekci pro sestavení a běh. Při sestavování pomocí příkazu \lstinline|docker build| je komponenta selektována názvem své běhové sekce pomocí argumentu \lstinline|--target|.
+
+Služby serveru jsem vytvořil virtuální stroj hostovaný na vlastním serveru uvnitř školní sítě. Pro jednotnou správu kontejnerů jsem použil nástroj Docker Compose a připravil soubor \lstinline|docker-compose.yml|, který popisuje a konfiguruje všechny služby systému. Kromě komunikace mezi službou Facade, webovou aplikací a prohlížečem, probíhá veškerá komunikace mezi službami po interní síti vytvořené v rámci spuštěné instance \lstinline|docker-compose.yml|. 
+
+\subsubsection{Kontejner aplikace}
+Aplikace, jakožto sada statických webových souborů, nemůže ,,běžet" samostatně. Potřebuje webový server, který soubory bude hostovat. Kontejnerizována je tedy nad obrazem kontejneru serveru Nginx, do které jsou soubory aplikace nakopírovány do výchozí sdílené složky \lstinline|/usr/share/nginx/html|. Aby výsledný kontejner bylo možné konfigurovat pomocí proměnných prostředí, stějně jako jiné kontejnery, je použit nástroj Import-meta-env. Ten při kompilaci aplikace upraví importy proměnných z objektu \lstinline|import.meta.env| tak, aby odkazovaly na proměnné na globálním objektu \lstinline|globalThis.import_meta_env|. Objekt je deklarován v souboru \lstinline|index.html| tak, aby ho bylo možné jednoduše textově nahradit. Pro zajištění, že jsou nejsou předány i citlivé proměnné, jsou nahrazeny pouze proměnné z referenčního souboru \lstinline|.env|. Před spuštěním kontejneru je zavolán příkaz \lstinline|import-meta-env --disposable --example /opt/env/.env.example --path /usr/share/nginx/html/index.html|, který v HTML souboru nahradí instance proměnných prostředí zmíněných v \lstinline|.env.example| hodnotami proměnných v běhovém prostředí.
+
+\subsubsection{GitHub Actions}
+Podobně jako u panelu je použita služba GitHub Actions. Automat spouští sestavení při příchozím GIT tagu. Podle tagu spustí sestavení obrazů kontejneru služby či aplikace. Po sestavení jsou publikovány veřejně v registru GitHub Packages.
+
+\begin{enumerate}
+    \item je spuštěn proces pro každou komponentu
+    \item procesy nevybrané TAGem jsou ukončeny
+    \item projekt je naklonován
+    \item proces se přihlásí ke GitHub Packages
+    \item jsou extrahovány metadata z příchozího commitu pomocí \lstinline|docker/metadata-action|
+    \item obraz kontejneru je sestaven a publikován funkcí \lstinline|docker/build-push-action|
+\end{enumerate}
+
+\section{Poznatky z provozu projektu}
+Systém byl nasazen 11. října 2023 na tři panely v prostorách školy. Specificky na panely u přednáškových sálů EC1, EC2 a EC3. Od té doby byly v nepřetržitém provozu bez jediného restartu a vážné chyby. Na panelech byl po dobu 5 měsíců zobrazován dynamická obrazovka s hodinami, počasím a novinkami ze školního RSS kanálu. Aktualizace probíhala každou minutu.
+
+Od té doby byl systém serveru předělán a nová verze funguje, s průběžnými úpravami, od 12.03.2024.

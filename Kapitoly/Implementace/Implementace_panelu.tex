@@ -1,1 +1,328 @@
 \section{Implementace panelu}
+Firmware panelu byl postaven nad čistým ESP-IDF a jazyku C++. To mi umožnilo udržovat projekt aktualizovaný s vývojem prostředí a měl jsem tak přístup k novým funkcím a opravám chyb, ke kterým bych se při použití Arduino a MicroPython nedostal. Projekt je hostován a verzován v samostatném repozitáři na platformě GitHub.
+
+\subsection{Použité nástroje}
+\begin{itemize}
+    \item editor: Clion
+    \item jazyky: C++, Python
+    \item dokumentace: AsyncAPI
+    \item knihovny:
+        \begin{itemize}
+            \item ESP-IDF
+            \item Inkplate ESP-IDF
+            \item esp\_mqtt\_cxx
+        \end{itemize}
+\end{itemize}
+
+\subsection{Struktura projektu}
+\subsubsection*{certs/}
+Při sestavování jsou zde očekávány soubory klíčů sloužící k podpisu obrazu firmwaru.
+
+\subsubsection*{components/}
+\begin{itemize}
+    \item inkplate/
+    \begin{itemize}
+        \item git submodul s forkem knihovny Inkplate ESP-IDF
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{docs/}
+\begin{itemize}
+    \item vsb-eink-panels-mqtt.yml
+    \begin{itemize}
+        \item popis MQTT API ve formátu asyncapi 2.6.0. Lze z něj vygenerovat knihovny klienta/serveru a HTML dokumentaci
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{main/src/}
+\begin{itemize}
+    \item drivers/
+    \begin{itemize}
+        \item obsahuje pomocné třídy pro interakci s hardwarem panelu
+    \end{itemize}
+    \item tasks/
+    \begin{itemize}
+        \item panel/panel\_task.{cpp,h}
+        \begin{itemize}
+            \item popis a implementace úlohy zpracovávající MQTT zprávy týkající se displeje a tlačítek
+        \end{itemize}
+        \item system/system\_task.{cpp,h}
+        \begin{itemize}
+            \item popis a implementace úlohy zpracovávající MQTT zprávy týkající se firmwaru a konfigurace
+        \end{itemize}
+        \item common.h
+            \begin{itemize}
+                \item obsahuje hlavičku společnou pro všechny úlohy
+            \end{itemize}
+    \end{itemize}
+    \item config.{cpp,h}
+    \begin{itemize}
+        \item obsahuje třídu Config obstarávající správu konfigurace programu
+    \end{itemize}
+    \item eink\_mqtt.{cpp,h}
+    \begin{itemize}
+        \item obsahuje implementaci MQTT klienta zděněného z \lstinline|idf::mqtt::Client|
+    \end{itemize}
+    \item main.cpp
+    \begin{itemize}
+        \item hlavní úloha programu
+        \item instancuje úlohy a nastavení sítě
+    \end{itemize}
+    \item utils.cpp
+    \begin{itemize}
+        \item pomocné funkce používané v programu
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{scripts/}
+\begin{itemize}
+    \item generate\_raw\_bitmap.py
+    \begin{itemize}
+        \item pomocný skript k převodu obrázků do binárního formátu určeného pro panel
+    \end{itemize}
+    \item pack\_firmware.py
+    \begin{itemize}
+        \item pomocný skript balicí všechny části firmwaru do jednoho souboru
+    \end{itemize}
+    \item provision\_panel.py
+    \begin{itemize}
+        \item pomocný skript pro přípravu a nahrání konfigurace do panelu
+    \end{itemize}
+\end{itemize}
+
+\subsection{Konfigurace programu}\label{konfigurace-panelu}
+Program používá k uložení konfigurace knihovnu NVS z prostředí ESP-IDF. Ta pro ukládání dat používání část hlavní flashové paměti kontroleru. Oddíl, který se má použít pro ukládání dat je označen značkou \verb|nvs| v tabulce oddílů. Data jsou ukládána po párech klíč-hodnota a hodnota je přitom bezpečně typována \cite{NonVolatileStorageLibrary}.
+
+Konfigurovatelná jsou tyto hodnoty:
+\begin{itemize}
+    \item Konfigurace WiFi
+    \begin{itemize}
+        \item ssid sítě WiFi
+        \item heslo sítě WiFi
+    \end{itemize}
+    \item Konfigurace panelu
+    \begin{itemize}
+        \item id panelu (nepovinný, když je prázdný, program jej nastaví na MAC adresu ESP32)
+        \item waveform displeje
+    \end{itemize}
+    \item Konfigurace MQTT
+    \begin{itemize}
+        \item URL adresa MQTT brokeru
+    \end{itemize}
+\end{itemize}
+
+Rozděleny jsou přitom do tří sekcí sloužících k možnosti odděleného načítání a rollbacku konfigurace. Hodnoty ssid, hesla a adresa brokeru jsou uloženy ve dvou slotech A a B. Slot A je použit jako primární. Ve slotu B je uložena záložní/výchozí konfigurace a hodnota z něj je použita, pokud slot žádnou hodnotu buď neobsahuje nebo je nefunkční. Když se například nepodaří připojit k síti WiFi s pomocí údajů z úložiště, program použije hodnotu ze záložního slotu. Pokud se podaří s těmito údaji připojit, jsou sloty mezi sebou prohozeny, aby se při dalším startu rovnou použila správná varianta. Stejnou logikou je řešeno připojení k MQTT brokeru.
+
+Při prvotním nastavování panelu je nutné připravit soubor s konfigurací. Ten je poté pomocí skriptu \lstinline{provision_panel.py} převeden na obraz oddílu NVS a nahrán do zařízení.
+
+\begin{lstlisting}[label=src:example-nvs-csv,caption={Ukázkový provizní soubor, řádek "eepro,data" rozdělen pro účel prezentace}]
+key,type,encoding,value
+eeprom,namespace,,
+eeprom,data,base64,VxYAAwMDAwMDAwAAAQIBAQICAQAAAgICAQICAQAA AAICAgICAQAAAwMCAQEBAgAAAwMCAgEBAgAAAgECAQIBAgAAAwMDAgICAgAU7g==
+vsb_eink,namespace,,
+panel_id,data,string,"ec4"
+wifi_ssid_a,data,string,"tuonet-iot"
+wifi_pass_a,data,string,"password"
+wifi_ssid_b,data,string,"Home-Wifi"
+wifi_pass_b,data,string,"password"
+broker_url_a,data,string,"mqtt://192.168.1.164:1883"
+broker_url_b,data,string,"mqtt://192.168.1.164:1883"
+\end{lstlisting}
+
+\subsection{Úlohy}
+\subsubsection{Hlavní úloha}
+Hlavní úloha, je spouštěna automaticky při startu systému a inicializuje úlohy displeje a systému. Vytvoří instanci konfiguračního správce a knihovny Inkplate, které předá úlohám jako hlavní argument.
+
+Před spuštěním úloh se připojí k WiFi a MQTT brokeru. V případě, že se připojení nezdaří, zkusí jinou konfiguraci nebo restartuje zařízení.
+
+\subsubsection{Úloha displeje}
+Po spuštění zaregistruje handlery MQTT topiců a inicializuje třídu \lstinline|InkplateTouchpad|, která hlídá stisky kapacitního touchpadu. Ve smyčce poté každých 100 ms aktualizuje stavový automat touchpadu.
+
+\subsubsection{MQTT API}
+\paragraph*{PUB vsb-eink/\{panel\_id\}/touchpad/\{button\_index\}}
+Zpráva odeslána při detekci události tlačítka touchpadu. \lstinline{button_index} může nabývat hodnot 1, 2, 3. Událost je obsažena v těle zprávy jako \verb|pressed| pro začátek doteku tlačítka a \verb|released| po jeho opuštění.
+
+Pro detekci událostí je vytvořen jednoduchý automat, který udržuje stav tlačítek a zpráva je odeslání při změně stavu.
+
+\paragraph*{PUB vsb-eink/\{panel\_id\}/touchpad/\{button\_index\}/\{button\_action\}}
+Alternativa předchozí zprávy, která identifikátor události předává místo těla v topicu zprávy.
+
+\paragraph*{SUB vsb-eink/\{panel\_id\}/display/raw\_1bpp/set}
+Obsahuje binární podobu obrázku, který se má vykreslit na displej částečným překreslením. Každé desáté vykreslení způsobí překreslení plné kvůli prodloužení života displeje.
+
+Interně nazvaný formát raw 1bpp je inspirovaný formátem BMP. Každý pixel je reprezentován 1 bitem. Pixely jsou baleny po skupinách osmi pixelů do jednoho bajtu. Pixel nejvíce nalevo je uložen v nejvyšším bitu. Mezi řádky obrázku není žádný oddělovač a pro dekódování je nutné znát rozlišení obrázku dopředu. Po obdržení zprávy si panel ověří očekávanou a skutečnou velikost přijatého obrázku a v případě, že se neshodují, přijatou zprávu ignoruje.
+
+\begin{lstlisting}[label=src:kaitai-1bpp,caption={Kaitai schéma formátu raw 1bpp}]
+meta:
+  id: vsb_eink_panel_raw_1bpp
+  endian: le
+seq:
+  - id: pixels
+    type: b1
+    enum: pixel
+    repeat: eos
+enums:
+  pixel:
+    0: white
+    1: black
+\end{lstlisting}
+
+\paragraph*{SUB vsb-eink/\{panel\_id\}/display/raw\_4bpp/set}
+Obsahuje binární podobu obrázku v režimu odstínů šedi, který se vykreslí plným překreslením displeje.
+
+Interně nazvaný formát raw 4bpp je, podobně jako raw 1bpp inspirován formátem BMP. Neobsahuje oddělovače mezi řádky ani informace o rozlišení. Pixely jsou baleny ve dvojicích na jeden bajt a každý pixel je reprezentován maximálně 3 bitovovu hodnotou. Velikost dat obrázku je v tomto režimu 495 kB. Pakety jsou zpracovány postupně a poloha pixelu je vypočítána z offsetu v bufferu. Oproti minulému návrhu jsem zvolil balení 4 bity na pixel pro snadnější implementaci \ref{binarni-format-navrh}.
+
+\begin{lstlisting}[label=src:kaitai-4bpp,caption={Kaitai schéma formátu raw 4bpp}]
+meta:
+  id: vsb_eink_panel_raw_4bpp
+  endian: le
+seq:
+  - id: pixels
+    type: b4
+    enum: pixel
+    repeat: eos
+enums:
+  pixel:
+    0: black
+    1: gray_6
+    2: gray_5
+    3: gray_4
+    4: gray_3
+    5: gray_2
+    6: gray_1
+    7: white
+\end{lstlisting}
+
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}
+        \tikzset{
+            style gray-0/.style={fill=black!100!white,text=white},
+            style gray-1/.style={fill=black!85!white,text=white},
+            style gray-2/.style={fill=black!71!white,text=white},
+            style gray-3/.style={fill=black!57!white,text=white},
+            style gray-4/.style={fill=black!42!white,text=black},
+            style gray-5/.style={fill=black!28!white,text=black},
+            style gray-6/.style={fill=black!14!white,text=black},
+            style gray-7/.style={fill=black!0!white,text=black}
+        };
+        \matrix[
+            matrix of nodes,
+            draw,
+            nodes=draw,
+            column 2/.style={nodes={style gray-0}},
+            column 3/.style={nodes={style gray-0}},
+            column 4/.style={nodes={style gray-0}},
+            column 6/.style={nodes={style gray-1}},
+            column 7/.style={nodes={style gray-1}},
+            column 8/.style={nodes={style gray-1}},
+            column 10/.style={nodes={style gray-2}},
+            column 11/.style={nodes={style gray-2}},
+            column 12/.style={nodes={style gray-2}},
+            column 14/.style={nodes={style gray-3}},
+            column 15/.style={nodes={style gray-3}},
+            column 16/.style={nodes={style gray-3}},
+            column 18/.style={nodes={style gray-4}},
+            column 19/.style={nodes={style gray-4}},
+            column 20/.style={nodes={style gray-4}},
+            column 22/.style={nodes={style gray-5}},
+            column 23/.style={nodes={style gray-5}},
+            column 24/.style={nodes={style gray-5}},
+            column 26/.style={nodes={style gray-6}},
+            column 27/.style={nodes={style gray-6}},
+            column 28/.style={nodes={style gray-6}},
+            column 30/.style={nodes={style gray-7}},
+            column 31/.style={nodes={style gray-7}},
+            column 32/.style={nodes={style gray-7}}
+        ] (m) {
+            0&0&0&0 & 0&0&0&1 & 0&0&1&0 & 0&0&1&1 & 0&1&0&0 & 0&1&0&1 & 0&1&1&0 & 0&1&1&1 \\
+        };
+    \end{tikzpicture}
+    \caption{Gradient osmi pixelů ve formátu raw\_4bpp}
+    \label{fig:raw_4bpp_binary}
+\end{figure}
+
+\paragraph*{SUB vsb-eink/\{panel\_id\}/display/get}
+Po přijetí panel panel sestaví obrázek uložený v bufferu displeje a publikuje jej na topicu vsb-eink/\{panel\_id\}/display.
+
+\paragraph*{PUB vsb-eink/\{panel\_id\}/display}
+Publikovaný aktuálně zobrazený obraz na displeji. Formát dat se liší podle režimu displeje. Může být buď ve formátu raw 1bpp nebo raw 4bpp.
+
+\subsubsection{Úloha systému}
+Po spuštění zaregistruje handlery na topicy spojené se systémem panelu. Ve smyčce pak každou sekundu publikuje stav systému.
+
+\paragraph{MQTT API}
+\paragraph*{SUB vsb-eink/\{panel\_id\}/config/set}
+Umožňuje částečně či plnou změnu konfigurace panelu. Tělo zprávy obsahuje JSON objekt s klíči \verb|panel|, \verb|wifi| a \verb|mqtt|. Každý klíč může obsahovat podklíče, které odpovídají jednotlivým konfigurovatelným hodnotám. Pokud je hodnota v těle zprávy neplatná, je zpráva ignorována. Po úspěšném zpracování je upravená konfigurace uložena do NVS do primárního slotu. Změny jsou aplikovány do paměti, ale služby panelu nejsou restartovány. Pro restart je nutné zaslat zprávu na topic reboot/set.
+
+\begin{lstlisting}[label=src:example-config-set,caption={Ukázka změny konfigurace všech dostupných hodnot}]
+    {
+        "panel": {
+            "panel_id": "ec4",
+            "waveform": 1
+        },
+        "wifi": {
+            "ssid": "TurrisLukasu",
+            "password": "password"
+        },
+        "mqtt": {
+            "broker_url": "mqtt://test.mosquitto.org:1883"
+        }
+    }
+\end{lstlisting}
+
+\paragraph*{SUB vsb-eink/\{panel\_id\}/reboot/set}
+Restartuje zařízení.
+
+\paragraph*{SUB vsb-eink/\{panel\_id\}/firmware/update/set}
+Tělo zprávy obsahuje řetězec URL adresy binárního souboru s novým firmwarem. Adresa je poté předána interní knihovně ESP HTTPS OTA, která naváže se serverem spojení, ověří, že je firmware podepsán validním klíčem a následně jej postupně stáhne a aplikuje do druhého slotu flash paměti. Po úspěšném nahrání je zařízení restartováno a nový firmware je spuštěn. Pokud se nezdaří do nového slotu nabootovat, je obnoven původní firmware.
+
+\paragraph*{PUB vsb-eink/\{panel\_id\}/system}
+Každou sekundu odesílaná zpráva o stavu systému. Obsahuje název sítě WiFi, ke které je panel připojen, síla signálu, doba, jak dlouho je panel zapnutý, velikost volné paměti, minimální naměřenou hodnotu volné paměti a verzi firmwaru. Jde o jedinou zprávu, kterou panel odesílá aktivně bez předchozího požadavku. Je užitečná při provizi panelu, protože je indikátorem úspěšné konfigurace.
+
+\begin{lstlisting}[label=src:example-system-status,caption={Ukázka zprávy stavu systému}]
+    {
+        "network": {
+          "ssid": "TurrisLukasu",
+          "rssi": -50
+        },
+        "uptime": 18936,
+        "freeHeap": 3295396,
+        "minFreeHeap": 3254604,
+        "firmwareVersion": "2.1.3"
+      }
+\end{lstlisting}
+
+\subsection{Modifikace Inkplate ESP-IDF}
+Při vývoji s Inkplate ESP-IDF jsem narazil na několik nedostatků, které mě donutily nedostatky konzultovat s jejím vývojářem a jsem některé jsem sám opravil ve vlastním forku \cite{TajnymagESPIDFInkPlateESPIDFInkPlate}. Ten jsem do projektu zakomponoval jako git submodul ve složce \verb|components/inkplate|.
+
+\subsubsection{PlatformIO} Původní verze Inkplate ESP-IDF byla připravena pro integraci v platformě PlatformIO. Ta slouží jako nástroj usnadňující práci s vývojovými prostředími embedded systémů. Sjednocuje tak příkazy pro inicializaci správné verze prostředí, konfiguraci parametrů desky, sestavení, flash apod \cite{WhatPlatformIOPlatformIO}. V době, kdy jsem ale projekt zakládal, nepodporovalo PlatformIO IDF verze 5.0 a nefungovala mi její integrace v prostředí editoru CLion. Naštěstí bylo potřeba jen vytvořit soubor \lstinline|CMakeLists.txt| registrující knihovnu jako komponentu ESP-IDF a zdokumentovat ruční instalaci knihovny do existujících ESP-IDF projektů.
+
+\subsubsection{Waveform tabulka} Tím, že displeje pro panely Inkplate pochází z více zdrojů, nevykazují zcela totožné chování z pohledu hardwarového API. Specificky se různí ve tvaru signálu, respektive waveform tabulkou. Různé kapsle elektronického inkoustu reagují na elektronické signály různě. Výrobci e-ink displejů proto se svými panely dodávají vyhledávací tabulky, které obsahují informace pro ovladač displeje, jak co nejoptimálněji dosáhnout specifických odstínů barev/šedi \cite{WaveformsTableIntroduction}. Protože displeje panelů Inkplate pochází od různých výrobců a z různých sérií, nelze použít stejnou tabulku waveform pro všechny distribuované panely. K této problematice jsem se dostal při zobrazování obrázků v režimu 8 barev. Vykreslený obraz byl nepřirozeně tmavý. Jas palety nepostupoval lineárně z černé do bílé barvy.
+
+\begin{figure}[h]
+    \centering
+    \subfloat[waveform 1\label{fig:waveform-1}]{
+        \includegraphics[width=0.31\textwidth]{Obrazky/waveform_demo/waveform_1.jpg}
+    }
+    \subfloat[waveform 2\label{fig:wavefor-2}]{
+        \includegraphics[width=0.31\textwidth]{Obrazky/waveform_demo/waveform_2.jpg}
+    }
+    \subfloat[waveform 3\label{fig:waveform-3}]{
+        \includegraphics[width=0.31\textwidth]{Obrazky/waveform_demo/waveform_3.jpg}
+    }
+    \caption{Srovnání ruzných waveform tabulek}
+	\label{fig:waveform-comparison}
+\end{figure}
+
+Inkplate Arduino svého času podporovalo výběr mezi dvěma tabulkami při inicializaci ovladače panelu, ale tato funkce byla odebrána. Oficiálně doporučeným řešením je nahrát do zařízení diagnostický program \cite{InkplateArduinolibraryExamplesInkplate10}, který vykreslí vzorový obraz na displeji a interaktivně lze otestovat vykreslení vzoru pomocí různých waveform tabulek. Nejlépe vypadající tabulka lze poté uložit do persistentní paměti a je automaticky použita ovladačem i po resetu zařízení \cite{Inkplate10Washed}.
+
+Inkplate ESP-IDF nepodporoval jakoukoliv formu změny použité tabulky. Na můj dotaz byla implementována podpora pro načítání tabulky z paměti panelu ve formátu kompatibilním s formátem používaným knihovnou Inkplate Arduino \cite{FeatureAddLightWaveform}.
+
+\subsubsection{ESP-IDF v5.0} Ve verzi 5.0 ESP-IDF přineslo řadu nových funkcí a zároveň i množství zpěně nekompatibilních změn. Knihovna s touto verzí nebyla kompatiblní. IDF změnilo verzi GCC a s ní verzi cílového standardu C++. Ve verzi C++20 byla například odebrána podpora smíšeného bitového přiřazení volatilních typů \cite{jtcDedeprecatingVolatileCompound}. V rámci knihovny ESP-IDF se zase změnily názvy některých konstant\cite{PeripheralsESP32S2ESPIDF} a byl odebrána stará verz ovladače SD karty \cite{StorageESP32S2ESPIDF}, kterou Inkplate ESP-IDF interně používal. Jednotlivé rozbité části jsem opravil a byly připojeny do větve \lstinline|idf-v5.0-support| upstream repozitáře \cite{WIPInitialSupport}. 
+
+\subsubsection{Chyba certifikátu} Knihovna sice podporovala načítání obrázků ze vzdáleného http serveru, ale padala při snaze o načtení https adres. Bylo nutné přiřadit do interního síťového klienta balík s certifikáty \cite{MenuconfigVariantSelection}.
+
+\subsubsection{Znovunavázání Wi-Fi spojení} Inkplate ESP-IDF obsahuje pomocnou funkci \lstinline|Display::joinAP()|, pro usnadnění připojení desky k síti. Při testování jsem ale, bohužel, zjistil, že se při nepodařeném spojení \lstinline|joinAp()| již znovu nepřipojí. Na vině bylo chybné resetování adaptéru ESP-NETIF a kontroly připojeného stavu \cite{MenuconfigVariantSelection}
+
+\subsubsection{Velikost firmwaru} Při vývoji jsem narazil na problém nedostatku místa na flash paměti mikrokontroleru. V jeden moment mi, i po deaktivaci nepotřebných modulů v konfiguraci ESP-IDF, zbývalo jen 48 kB, tedy zhruba 3 \% volného místa na oddílu aplikace. Ve výpisu nástroje \lstinline|idf.py size-components| se zdála původcem problému komponenta \lstinline|libstdc++.a| zabírající přes 201 kB paměti. O 70 \% více než druhá největší komponenta \lstinline|libstdc.a|. Já jsem však ve svém kódu žádné hlavičky, které by měly vést k takovému nárůstu velikosti ve svém kódu neobjevil. Dle dokumentace jsem zaměnil implementaci formátování řetězců za Newlib Nano \cite{MinimizingBinarySize}. Tato změna sama o sobě způsobila zmizení \lstinline|libstdc.a| ze seznamu největších komponent a uvolnila dalších 100 kB místa. \lstinline|libstdc++.a| ale stále zůstala jako hlavní problém a optimalizace kompilátoru a prostředí mi už nepomáhaly. Po průchodu vlastním kódem jsem začal analyzovat kód knihovny Inkplate ESP-IDF. V té \lstinline|libstdc++.a| též figurovala jako největší komponenta projektu. Čirou náhodou jsem v souboru ovladače pro variantu Inkplate 10 narazil na nepoužívanou inkluzi hlavičky \lstinline|iostream|. Po jejím odstranění \lstinline|libstdc++.a| též zmizela ze seznamu a v kombinaci s touto změnou se volné místo na flash paměti rozšířilo o dalších 15 \%. Na konci optimalizací jsem skončil s 26 \% volného místa na oddílu aplikace.

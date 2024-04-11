@@ -1,0 +1,21 @@
+/hosted/core/files/{path}:
+  get:
+    operationId: getContentMetadata
+    tags: [hosted, content]
+    security:
+      - tokenAuth: [HOSTED_READ]
+    parameters:
+      - $ref: '#/components/parameters/path'
+    responses:
+      '200':
+        description: Metadata of the requested file or directory
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentMetadata'
+      '404':
+        description: File or directory not found
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HttpError'

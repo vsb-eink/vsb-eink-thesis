@@ -1,0 +1,18 @@
+@startuml
+[Scheduler] as scheduler
+[Grouper] as grouper
+[Facade] as facade
+[Hoster] as hoster
+[Renderer] as renderer
+[Compressor] as compressor
+[Facade Client] as facade_client
+
+facade -up-> scheduler : manage schedule
+facade -up-> grouper : sync devices
+facade -up-> hoster : manage files
+
+renderer -up-> hoster : get content
+compressor -up-> hoster : get content
+
+facade_client -up-> facade : manage system
+@enduml
