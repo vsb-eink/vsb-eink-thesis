@@ -1,5 +1,5 @@
 \section{Implementace aplikace}
-Pro uživatelsky přívětivé ovládání systému bez potřeby přímého přístupu k serveru byla vyvinuta základní webová aplikace ve stylu SPA, tedy Single Page Application. Jde o druh webové aplikace, jejíž základ je popaán jen jediným webovým dokumentem a veškerý zbytek dat aplikace je načítán aplikací samotnou bez potřeby opakovaného načtení dokumentu\cite{SPASinglepageApplication2023}. Samotná aplikace je distribuována jako sada statických souborů a lze ji tak hostovat kdekoliv, včetně lokálního serveru. Dynamická data získává aplikace skrze REST API služby Facade, podobně jako jakýkoliv jiný samostatný klient.
+Pro uživatelsky přívětivé ovládání systému bez potřeby přímého přístupu k serveru byla vyvinuta základní webová aplikace ve stylu SPA, tedy Single Page Application. Jde o druh webové aplikace, jejíž základ je popsán jen jediným webovým dokumentem a veškerý zbytek dat aplikace je načítán aplikací samotnou bez potřeby opakovaného načtení dokumentu\cite{SPASinglepageApplication2023}. Samotná aplikace je distribuována jako sada statických souborů a lze ji tak hostovat kdekoliv, včetně lokálního serveru. Dynamická data získává aplikace skrze REST API služby Facade, podobně jako jakýkoliv jiný samostatný klient. Její balíček je nazván \lstinline|dashboard-vue| a zastupuje službu \textbf{Dashboard}.
 
 Za základní framework, na kterém je aplikace postavena, bylo zvoleno Vue 3, které svou syntaxí připomíná framework Svelte, který je již používaný ve školním systému Kelvin \cite{SPASinglepageApplication2023}. Pro zjednodušení tvorby uživatelského rozhraní jsem použil komponentový framework Quasar\cite{QuasarframeworkQuasar2024}. Ten jsem zvolil po srovnání s jinými dostupnými Vue frameworky. Quasar jako jediný nabídl komponentu pro interakci se stromovitými daty, nevyžadoval žádné stylování ze strany vývojáře a měl dostatečně aktivní vývoj a komunitu. Jmenovitě jsem mimo Quasar evaluoval i Shadcn\cite{RadixvueRadixvue2024}, Vuetify\cite{VuetifyjsVuetify2024}, PrimeVue\cite{PrimefacesPrimevueNext}, Naive UI\cite{TusenaiNaiveui2024} a Radix Vue\cite{RadixvueShadcnvue2024}.
 
@@ -15,7 +15,9 @@ Za základní framework, na kterém je aplikace postavena, bylo zvoleno Vue 3, k
         \end{itemize}
 \end{itemize}
 
-\subsection{Struktura projektu}
+\subsection{Adresářová struktura projektu}
+Kořen složky aplikace je uložen v repozitáři služeb v cestě \lstinline|/apps/dashboard-vue|. Seznam souborů níže popisuje obsah složky aplikace \lstinline|src/|.
+
 \begin{itemize}
     \item assets/
         \begin{itemize}
@@ -43,7 +45,7 @@ Za základní framework, na kterém je aplikace postavena, bylo zvoleno Vue 3, k
         \end{itemize}
     \item utils/
         \begin{itemize}
-            \item obsahuje ruzné pomocné funkce
+            \item obsahuje různé pomocné funkce
         \end{itemize}
     \item views/
         \begin{itemize}
@@ -71,9 +73,7 @@ Za základní framework, na kterém je aplikace postavena, bylo zvoleno Vue 3, k
 Kód klienta k Facade API byl vygenerován nástrojem openapi-generator organizace OpenAPI Tools. Specificky intergrovaný generátor typescript-axios. Ten dostává na vstupu OpenAPI specifikaci a generuje soubory typově bezpečného klienta s podporou autentizace, variabilní adresou serveru, nahrávání souborů a metodami pojmenovanými podle atributu \lstinline|operationId| uvedeným ve specifikaci pro každou cestu.
 
 \subsubsection{Úpravy klienta}
-Kód vygenerovaného klienta bylo potřeba upravit z důvodu limitace OpenAPI popisu adres uživatelských souborů. Nepodporuje totiž adresní parametry obsahující lomítka, nejde je tedy s její pomocí validně popsat. Vygenerovaný klient parametry adresy, správně, dle specifikace, escapuje funkcí \lstinline|encodeURIComponent|. Pro možnost zachování používání, jinak nezměněného, klienta, napsal jsem skript, který po generaci vyhledá a přepíše instance kódu escapující parametry \lstinline|path| z kódující funkce jen na běžné převedení na řetězec. Příloha \ref{src:input-getmetadata-openapi} ukazuje popis cesty \lstinline|GET /hosted/core/files/{path}| pomocí OpenAPI dokumentu. V příloze \ref{src:output-getmetadata-openapi} je potom vidět vygenerovaná funkce \lstinline|getContentMetadata|.
-
-Při inicializaci je vytvořena instance HTTP klienta axios\cite{AxiosAxios2024}, které je předána kořenová adresa služby Facade. Autentizační token je generovaným klientem načítán při každém požadavku funkcí \lstinline|accessToken()|, stačí ji tedy naimplementovat vlastní funkcí, která token vytáhne z lokálního úložiště. Klient má pak vždy aktuální token.
+Kód vygenerovaného klienta bylo potřeba upravit z důvodu limitace OpenAPI popisu adres uživatelských souborů. Nepodporuje totiž adresní parametry obsahující lomítka, nelze je tedy s její pomocí validně popsat. Vygenerovaný klient parametry adresy, dle specifikace, escapuje funkcí \lstinline|encodeURIComponent|. Pro možnost zachování používání, jinak nezměněného, klienta, jsem napsal skript, který po generaci vyhledá a přepíše instance kódu escapující parametry \lstinline|path| z kódující funkce jen na běžné převedení na řetězec. Příloha \ref{src:input-getmetadata-openapi} ukazuje popis cesty \lstinline|GET /hosted/core/files/{path}| pomocí OpenAPI dokumentu. V příloze \ref{src:output-getmetadata-openapi} je potom vidět vygenerovaná funkce \lstinline|getContentMetadata|.
 
 \begin{lstlisting}[label=src:facade-client-init,caption={Inicializace Facade API klienta}]
 const axiosInstance = axios.create({
@@ -92,10 +92,12 @@ export const api = {
 };
 \end{lstlisting}
 
+Při inicializaci je vytvořena instance HTTP klienta axios\cite{AxiosAxios2024}, které je předána kořenová adresa služby Facade. Autentizační token je generovaným klientem načítán při každém požadavku funkcí \lstinline|accessToken()|, stačí ji tedy naimplementovat vlastní funkcí, která token načte z lokálního úložiště. Klient má pak vždy aktuální token. Ukázka kódu \ref{src:facade-client-init} zachycuje inicializaci klienta.
+
 Klient je umístěn ve vlastním balíčku \lstinline|facade-api-client| a je samostatně importovatelný.
 
 \subsection{Ovládání aplikace}
-Obrazovky aplikace pevně kopírují strukturu a funkcionalitu Facade API. Uživatel má možnost procházet seznamy uživatelů, panelů, úkolů a hostovaných souborů. Po výběru entity je uživatel přesměrován na obrazovku s detaily entity, kde je entita modifikovatelná. Po pozměnění dat entity je uživateli nabídnuto uložení změn a změny jsou odeslány na server.
+Obrazovky aplikace pevně kopírují strukturu a funkcionalitu Facade API. Uživatel má možnost procházet seznamy uživatelů, panelů, úkolů (obrázek \ref{fig:responsive-schedules}) a hostovaných souborů. Po výběru entity je uživatel přesměrován na obrazovku s detaily entity, kde je entita modifikovatelná. Po pozměnění dat entity je uživateli nabídnuto uložení změn a změny jsou odeslány na server.
 
 \begin{figure}[h]
     \centering

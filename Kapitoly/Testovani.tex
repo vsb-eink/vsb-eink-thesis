@@ -1,0 +1,82 @@
+\chapter{Testování systému}
+Systém byl nasazen 11. října 2023 na tři panely v prostorách školy. Specificky na panely u přednáškových sálů EC1, EC2 a EC3. Od té doby jsou v nepřetržitém provozu bez vážné chyby. Dle atributu \lstinline|uptime| získaného ze statutu systému, bez jediného restartu. Na panelech byla po dobu 5 měsíců zobrazována dynamická obrazovka s hodinami, počasím a novinkami ze školního RSS kanálu. Aktualizace probíhala každou minutu.
+
+\section{Resilience}
+Projektovaný systém je schopen se sám automaticky vzpamatovat z většiny výpadků. V případě panelu jsou hlavními riziky celkový pád firmwaru, výpadek spojení k Wi-Fi a k MQTT brokeru. V případě služeb též hrozí neočekávaný pád služby jednotlivé, pád služby, na které sama závisí a pád MQTT brokeru.
+
+\subsection{Neočekávaný pád}
+Při pádu systému panelu se panel sám restartuje a inicializuje znovu všechny své úlohy. Ověřeno mnohými pády systému při vývoji.
+
+Pád služeb je řešen pomocí nástrojů Docker a Docker Compose. Kontejnery označené atributem \lstinline|restart: always| jsou Dockerem automaticky restartovány při svém pádu nebo po restartu hostujícího operačního systému. Server aplikace a služby Facade, Hoster, Grouper a Scheduler navíc obsahují aktivní kontrolu stavu svých HTTP API pomocí funkce kontejneru \lstinline|HEALTHCHECK|. Každý takový kontejner má definovaný příkaz, který je spouštěn v 30 sekundových intervalech. Pokud třikrát selže, je kontejner označen stavem \lstinline|unhealthy|. U všech služeb s HTTP API příkaz kontroluje stav cesty \lstinline|GET /health|. V případě aplikace \lstinline|GET /|. Docker však nenabízí možnost restartování služeb podle tohoto stavu\cite{AddSupportUserdefined}. Na produkčním serveru jsem rozjel ještě kontejner Autoheal\cite{farrellWillfarrellDockerautoheal2024}, který služby ve stavu \lstinline|unhealthy| restartuje. Funkčnost jsem ověřil nasazením nefunkčního kódu jedné služby. Služba byla správně označena a restartována.
+
+\subsection{Výpadek napájení panelu}
+Panel je schopen automatické obnovy pouze při krátkodobém výpadku. Panel jsem odpojil a postupně zapojoval po 5 sekundových intervalech. Panel se sám neobnovil po 20. vteřině. V případě, že by takový výpadek nastal, je nutné panel spustit stisknutím tlačítka napájení na jeho levé straně. Jde o hardwarovou limitaci, kterou lze upravit změnou hardwarovou úpravou desky panelu\cite{Inkplate10hardwareSchematicsGerber}.
+
+\subsection{Výpadek služby}
+Služby jsou odolné vůči vzájemným výpadkům hlavně díky použití protokolů HTTP a MQTT. Výpadek jakékoliv služby se závislostí na MQTT komunikaci má za následek přerušení dodávky obsahu na panely. Avšak ihned po jejím spuštění je provoz obnoven i bez jakékoliv známky chyby a nutnosti restartovat ostatní služby. Výpadek služeb s HTTP API, jako je Hoster a Scheduler mají za následek znefunkčnění správy svých dat ve webovém rozhraní. Po jejich spuštení stačí ve webovém rozhraní jen 
+ data opětovně načíst. 
+
+\subsection{Výpadek Wi-Fi}
+Může se stát, že panel ztratí spojení se sítí Wi-Fi. V takovém případě se panel automaticky pokouší spojení obnovit. Připojil jsem panel k domácí síti a síť opakovaně dočasně deaktivoval a reaktivoval. Panel vždy úspěšně navázal spojení znovu.
+
+\begin{lstlisting}[label=src:wifi-connection-loss-log,caption={Záznam událostí firmwaru při ztrátě spojení s Wi-Fi}]
+I (67616) wifi:bcn_timeout,ap_probe_send_start
+I (67616) NetworkClient: STA Event, Base: 3f4170f4, Event: 21.
+I (70116) wifi:ap_probe_send over, resett wifi status to disassoc
+I (70116) wifi:state: run -> init (c800)
+I (70116) wifi:pm stop, total sleep time: 38687037 us / 65565859 us
+I (70126) wifi:<ba-del>idx
+I (70126) wifi:new:<13,0>, old:<13,0>, ap:<255,255>, sta:<13,0>, prof:1
+I (70136) NetworkClient: STA Event, Base: 3f4170f4, Event: 5.
+E (70136) transport_base: poll_read select error 113, errno = Software caused connection abort, fd = 54
+I (70136) NetworkClient: Wifi Disconnected.
+W (73246) wifi:Haven't to connect to a suitable AP now!
+W (77246) wifi:Haven't to connect to a suitable AP now!
+I (80156) NetworkClient: retry to connect to the AP
+I (80176) wifi:new:<13,0>, old:<13,0>, ap:<255,255>, sta:<13,0>, prof:1
+I (80176) wifi:state: init -> auth (b0)
+I (80176) wifi:state: auth -> assoc (0)
+I (80186) wifi:state: assoc -> run (10)
+I (80236) wifi:connected with TurrisLukasu, aid = 4, channel 13, BW20, bssid = 00:eb:d8:2b:15:62
+I (80236) wifi:security: WPA2-PSK, phy: bgn, rssi: -62
+I (80236) wifi:pm start, type: 1
+I (80236) NetworkClient: STA Event, Base: 3f4170f4, Event: 4.
+I (80276) wifi:AP's beacon interval = 102400 us, DTIM period = 1
+I (137316) wifi:<ba-add>idx:0 (ifx:0, 00:eb:d8:2b:15:62), tid:0, ssn:3, winSize:64
+I (141736) esp_netif_handlers: sta ip: 192.168.1.220, mask: 255.255.255.0, gw: 192.168.1.1
+I (141736) NetworkClient: STA Event, Base: 3f416770, Event: 0.
+I (141736) NetworkClient: got ip:192.168.1.220
+\end{lstlisting}
+
+Výpis \ref{src:wifi-connection-loss-log} zachycuje události, které firmware zachytil při ztrátě spojení s Wi-Fi a po jeho opětovném navázání.
+
+\subsection{Výpadek MQTT brokeru}
+Podobně jako ztráta spojení s bezdrátovou sítí může nastat ztráta spojení s MQTT brokerem. Vytvořil jsem instanci brokeru Mosquitto a připojil k němu panel. Po ustálení spojení jsem broker ukončil a znovu spustil. Panel se znovu sám připojil. Funkce automatického pokusu o opětovné připojení je implementována přímo v knihovně MQTT klienta ESP-IDF.
+
+\begin{lstlisting}[label=src:mqtt-connection-loss-log,caption={Záznam událostí firmwaru při ztrátě spojení s MQTT brokerem}]
+E (774566) transport_base: tcp_read error, errno=Socket is not connected
+E (774566) mqtt_client: esp_mqtt_handle_transport_read_error: transport_read() error: errno=128
+I (774566) mqtt_client_cpp: MQTT_EVENT_ERROR
+E (774576) mqtt_client_cpp: Last error reported from esp-tls: 0x8008
+E (774576) mqtt_client_cpp: Last error captured as transport's socket errno: 0x80
+I (774586) mqtt_client_cpp: Last errno string (Socket is not connected)
+E (774596) mqtt_client: mqtt_process_receive: mqtt_message_receive() returned -1
+I (774606) mqtt_client_cpp: MQTT_EVENT_DISCONNECTED
+I (789606) mqtt_client_cpp: MQTT_EVENT_BEFORE_CONNECT
+I (789626) mqtt_client_cpp: MQTT_EVENT_CONNECTED
+I (789636) mqtt_client_cpp: MQTT_EVENT_SUBSCRIBED, msg_id=65025
+I (789666) mqtt_client_cpp: MQTT_EVENT_PUBLISHED, msg_id=55518
+\end{lstlisting}
+
+Výpis \ref{src:mqtt-connection-loss-log} zachycuje události, které firmware zachytil při ztrátě spojení s MQTT brokerem. 
+
+\section{Odepření služby}
+\subsection{Přetížení panelu}
+Za běžných okolností pád z důvodu počtu požadavků či velikosti dat nehrozí. Plánování funguje na principu, kdy každou vteřinu může jeden cíl obdržet pouze jeden příkaz. Velikost souboru je zase limitována vlastním binárním formátem obrazových dat, který má vždy stejnou velikost.
+
+Panel je, z hlediska počtu požadavků, chráněn sériovým zpracováním zpráv. Vždy provádí pouze jeden příkaz naráz. Z hlediska velikosti zprávy obrázku je na druhou stranu chráněn kontrolou velikosti přijímaných dat. Pokud je obsah zprávy větší, než by v daném režimu zobrazení měl být, panel paket zahodí. V případě ostatních příkazů panel přijme pouze zprávy, které se vejdou do jednoho paketu. Nehrozí tak například pád při parsování příliš velké zprávy typu JSON. Ověřil jsem všechna tato tvrzení skriptem, který ve smyčce bez prodlevy posílal zprávy velkých velikostí a nevalidních dat.
+
+Přestože panel nespadne, jde přetížit a zamezit jeho činnosti. Dokud nezpracuje všechny čekající pakety, nedostane se včas k validním příkazům. Tomuto chování, bohužel, nelze jakkoliv plně zamezit. Vestavěný MQTT klient ESP-IDF nenabízí jakýkoliv limit příchozích zpráv, který by s tímto problémem pomohl.
+
+\subsection{Přetížení služeb}
+Služby jsem podrobil zátěžovému testu, kdy jsem bez prodlevy MQTT zprávami zaplavil služby Renderer, Grouper a Compressor. Test probíhal na virtuálním serveru se 4 GB paměti RAM, 4 virtuálními jádry procesoru i7-6920HQ a systému Debian 12. Virtuální server byl hostován pod hypervizorem Proxmox běžícím na notebooku Dell Precision 7520. Při testování jsem zjistil, že služby Compressor a Grouper při plné zátěži sice vytíží procesor na maximum, ale jinak dále fungují i s více než 100 požadavky za sekundu a ustálenou spotřebou paměti. Služba Renderer je však kvůli své závislosti na běžící prohlížeč podstatně náchylnější ke kolapsu. Zvládala udržet krok s požadavky na vykreslení jednoduché externí webové stránky s 10 požadavky za sekundu s dobou potřebnou k získání snímku pohybující se mezi 5 až 400ms. V případě webových adres s pomalejší odezvou a bohatším obsahem však bezpečně udržela krok pouze s jedním až dvěma požadavky. Čas na snímek se pohyboval mezi 300 a 3000ms. Problém vidím v prohlížeči Chromium a způsobu, jakým jsou při vykreslování stránky odděleny do izolovaných kontextů. Též je na vině velikost a optimalizace testovaných stránek. Pro udržení konstatního času na snímek by služba musela omezit dobu, jaká je stránce dána k načtení. Tím by ale hrozilo, že se na panelech může ukazovat jen částečně načtená obrazovka.

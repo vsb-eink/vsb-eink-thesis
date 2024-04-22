@@ -1,8 +1,8 @@
 \chapter{Hardware a prostředí}
 
 \section{Inkplate 10}
-Středem celého projektu je panel Inkplate 10 od chorvatské společnosti Soldered Electronics. Ta jej uvedla na začátku roku 2021, ještě pod svým tehdejším jménem e-radionica \cite{solderedelectronicsUs}, na crowdfundingové platformě Crowd Supply \cite{zovkoOurCampaignLive2021}.
-Kampaň měla za cíl vybrat 12 900 \$. To se jim podařilo vybrat za méně než 24 hodin \cite{crowdsupplyna[@crowd_supply]NewCampaignLaunched2021} a ve výsledku e-radionica vybrala přes 178 tisíc dolarů \cite{solderedelectronicsInkplate102021}.
+Středem celého projektu je panel Inkplate 10 od chorvatské společnosti Soldered Electronics. Ta jej uvedla na trh začátkem roku 2021, ještě pod svým tehdejším jménem e-radionica \cite{solderedelectronicsUs}, na crowdfundingové platformě Crowd Supply \cite{zovkoOurCampaignLive2021}.
+Kampaň měla za cíl vybrat 12 900 \$. To se podařilo za méně než 24 hodin \cite{crowdsupplyna[@crowd_supply]NewCampaignLaunched2021} a ve výsledku e-radionica vybrala přes 178 tisíc dolarů \cite{solderedelectronicsInkplate102021}.
 
 Panel disponuje 9,7 palcovým e-ink displejem o rozlišení 1200 na 825 pixelů, USB-C portem, třemi kapacitními tlačítky, a integrovaným čipem ESP32.
 
@@ -15,39 +15,39 @@ Displej, funguje na technologii elektronického inkoustu a pochází z vyřazen�
 Každý pixel přitom může nabývat až 8 odstínů šedi, tedy 3 bity na jeden pixel. Aktualizace obrazu v tomto režimu trvá, dle výrobce, 1,81 sekundy.
 V černobílém režimu (režim 1 bit na pixel) podporuje i částečné překreslení, které zvládá za 0,62 sekundy \cite{solderedelectronicsInkplate102021}. Při mém testování byly tyto časy ale o něco delší.
 
-Důvodem pro relativně dlouhý čas pro překreslení panelu je technologie e-ink, tedy elektronický inkoust. Technologie (černo-bílého e-inkoustu) funguje na bázi fyzických miniaturních mikrokapslí, zhruba o průměru lidského vlasu. Každá kapsle obsahuje kladně nabité bílé částice a záporně nabité černé částice zachycené v čiré kapalině. Podle polarity elektrického pole v kapsli se černé a bílé částice rozdělí ke korespondujícím elektrodám u povrchu, čímž se daná kapsle zbarví do bíla či černa \cite{einkholdingsinc.ElectronicInkInk}. V případě panelů podporujících odstíny šedi, nejsou částice přesunuty plně k povrchu, ale jen částečně tak, aby poměr bílých a černých částic u povrchu na pohled připomínal cílený odstín šedi \cite{adafruitindustriesTHINKINKHow2020}. Jsou k tomu použity velmi přesné střídavé náboje. Pomalé vykreslování je způsobené relativně vysokou dobou přesunu částic a jejich ustálením. Navíc přesun částic není plně spolehlivý a při vykreslování je běžné, že některé skupiny částic zůstanou nepřesunuté, e-ink displeje bývá nutno relativně často resetovat cyklickým překreslením černého a bílého stavu \cite{heikenfeldReviewPaperCritical2011}.
+Důvodem pro relativně dlouhý čas pro překreslení panelu je technologie e-ink, tedy elektronický inkoust. Technologie (černo-bílého e-inkoustu) funguje na bázi fyzických miniaturních mikrokapslí, zhruba o průměru lidského vlasu. Každá kapsle obsahuje kladně nabité bílé částice a záporně nabité černé částice zachycené v čiré kapalině. Podle polarity elektrického pole v kapsli se černé a bílé částice rozdělí ke korespondujícím elektrodám u povrchu, čímž se daná kapsle zbarví do bíla či černa \cite{einkholdingsinc.ElectronicInkInk}. V případě panelů podporujících odstíny šedi, nejsou částice přesunuty plně k povrchu, ale jen částečně tak, aby poměr bílých a černých částic u povrchu na pohled připomínal cílený odstín šedi \cite{adafruitindustriesTHINKINKHow2020}. Jsou k tomu použity velmi přesné střídavé náboje. Pomalé vykreslování je způsobené relativně dlouhou dobou nutnou k přesunu částic a jejich ustálením. Navíc přesun částic není plně spolehlivý a při vykreslování je běžné, že některé skupiny částic zůstanou nepřesunuté, e-ink displeje bývá nutno relativně často resetovat cyklickým překreslením černého a bílého stavu \cite{heikenfeldReviewPaperCritical2011}.
 
 \section{Programování Inkplate}
 
-Pro účely programování nabízí Inkplate \cite{solderedelectronicsInkplate102021}\cite{solderedelectronicsInkplateFeaturesInkplate}:
+Pro účely programování nabízí Inkplate:
 \begin{itemize}
     \item dvoujádrový procesor s frekvencí až 240 MHZ
     \item 8 MB paměti RAM
     \item 4 MB paměti flash
     \item USB-C port
-    \item integrovanou podporu Wi-Fi a Bluetooth 4.0
+    \item integrovanou podporu Wi-Fi a Bluetooth 4.0 \cite{solderedelectronicsInkplate102021}
     \item integrovaný USB-UART konvertor
-    \item integrovaný časovač (RTC)
+    \item integrovaný časovač (RTC) \cite{solderedelectronicsInkplateFeaturesInkplate}
     \item volně přístupné GPIO piny s nativní podporou protokolů I\textsuperscript{2}C, SPI a easyC/Qwiic
 \end{itemize}
 
 \subsection{ESP32}
-Zabudovaný mikrokontroler je založený na čipu ze série ESP32 od čínské společnosti Espressif Systems \cite{espressifEspressifEspressifSystems}. Jedná se o nástupce čipu ESP8266 z roku 2014 uvedený o dva roky později v září 2016 \cite{espressifEspressifAnnouncesLaunch}. Tyto čipy jsou známé svou relativně nízkou cenou, integrovanou konektivitou, výkonem a otevřeností svého firmwaru. Staví se mezi nejčastěji používané mikrokontrolery na světě\cite{espressifEspressifLeadsIoT}\cite{espressifEspressifEspressifSystems}.
+Zabudovaný mikrokontroler je založený na čipu ze série ESP32 od čínské společnosti Espressif Systems \cite{espressifEspressifEspressifSystems}. Jedná se o nástupce čipu ESP8266 z roku 2014. ESP32 bylo uvedeno o dva roky později v září 2016 \cite{espressifEspressifAnnouncesLaunch}. Tyto čipy jsou známé svou relativně nízkou cenou, integrovanou konektivitou, vysokým výkonem a otevřeností svého firmwaru. Staví se mezi nejčastěji používané mikrokontrolery na světě\cite{espressifEspressifLeadsIoT}\cite{espressifEspressifEspressifSystems}.
 
-Je navržen pro mobilní zařízení, průmyslovou automatizaci a internet věcí. Pro účely omezení spotřeby energie nabízí několik režimů spánku, dynamickým škálováním výkonu a relativně nízkou aktivní spotřebu hlavního procesoru. V režimu Hlubokého spánku jeho spotřeba padne až na $10 \mu A$ i při zachování napájení RTC paměti. Pro aplikace kritické na bezpečnost nabídne hardwarově akcelerované kryptografické šifry, Secure Boot (ověření podpisu zaváděného firmwaru) a obecné šifrování flash paměti \cite{esp32_datasheet}. 
+Byl navržen pro mobilní zařízení, průmyslovou automatizaci a internet věcí. Pro účely omezení spotřeby energie nabízí několik režimů spánku, dynamické škálování výkonu a relativně nízkou aktivní spotřebu hlavního procesoru. V režimu hlubokého spánku jeho spotřeba padne až na $10 \mu A$ i při zachování napájení RTC paměti. Pro aplikace kritické na bezpečnost nabídne hardwarově akcelerované kryptografické šifry, Secure Boot (ověření podpisu zaváděného firmwaru) a obecné šifrování flash paměti \cite{esp32_datasheet}. 
 
 Všechny čipy ESP32 nabízí\cite{espressifProductOverviewESP32}:
 \begin{itemize}
     \item Wi-Fi (2,4 GHz)
     \item Bluetooth 4.0
     \item dvoujádrový 32-bitový procesor Tensilica Xtensa LX6 operujiící až na 240 MHz
-    \item úsporný koprocesor
+    \item ULP koprocesor\cite{ULPCoprocessorProgramming}
 \end{itemize}
 
 \subsection{ESP-IDF}
-Oficiální vývojové prostředí pro čipy řady ESP. Bylo vyvíjeno otevřeně pod open-source licensí Apache License 2.0 od uvedení ESP32 \cite{grokhotkovInitialPublicVersion2016}. ESP-IDF je založeno na implementaci operačního systému FreeRTOS, ale nabízí i ucházející podporu API kompatibilních se standardem POSIX. Pro příklad lze pro tvorbu vláken používat jak nativní \lstinline|xTaskCreate| z FreeRTOS tak i posixové \lstinline|pthread_create| \cite{espressifPOSIXThreadsSupport}. Zdrojový kód projektů závisejících na ESP-IDF se díky tomu téměř neliší od projektů pro běžné posixové operační systémy.
+Oficiální vývojové prostředí pro čipy řady ESP. Bylo vyvíjeno otevřeně pod open-source licencí Apache License 2.0 od uvedení ESP32 \cite{grokhotkovInitialPublicVersion2016}. ESP-IDF je založeno na implementaci operačního systému FreeRTOS, ale nabízí i ucházející podporu API kompatibilních se standardem POSIX. Pro příklad lze pro tvorbu vláken používat jak nativní \lstinline|xTaskCreate| z FreeRTOS tak i posixové \lstinline|pthread_create| \cite{espressifPOSIXThreadsSupport}. Zdrojový kód projektů závisejících na ESP-IDF se díky tomu téměř neliší od projektů pro běžné posixové operační systémy.
 
-Od verze v2.0 podporuje projekty využívající C++ a STL \cite{grokhotkovReleaseESPIDFRelease} a ve své aktuální verzi v5.2 podporuje kompiluje se standardem C++23. S omezeními zvládá podporu C++ vláken, mutex, výjimek i RTTI \cite{espressifSupportESP32ESPIDF}. Vlákna a mutex jsou postavené nad interní implementací \lstinline|pthread.h| \cite{espressifPOSIXThreadsSupport}.
+Od verze v2.0 podporuje projekty využívající C++ a STL \cite{grokhotkovReleaseESPIDFRelease} a ve své aktuální verzi v5.2 podporuje standard C++23. S omezeními zvládá podporu C++ vláken, mutex, výjimek i RTTI \cite{espressifSupportESP32ESPIDF}. Vlákna a mutex jsou postavené nad interní implementací \lstinline|pthread.h| \cite{espressifPOSIXThreadsSupport}.
 
 Kromě standardní knihovny C/C++ obsahuje SDK funkce pro přístup k hardwaru čipů ESP, jako je Wi-Fi, Bluetooth, persistentní paměť, JTAG debugging, HAL a LL abstrakce, zabezpečení bootloaderu a Over-The-Air aktualizace \cite{espressifAPIGuidesESP32}.
 
@@ -71,13 +71,13 @@ Soldered Electronics pro své panely vyvíjí a udržuje knihovny pro dvě vývo
 \end{table}
 
 \subsubsection{Inkplate Arduino}
-Platforma Arduino se skládá z mikrokontrolerů, programovacího jazyku, vývojového prostředí (IDE) a ekosystému Arduino knihoven. Arduino vzniklo jako učební pomůcka na Ivrea Interaction Design Institute v Milánu. Mělo za cíl vytvořit prostředí a vývojové desky, se kterými mohou pracovat i studenti bez podrobných znalostí elektroniky a programování \cite{WhatArduino}. Z čistě učební pomůcky se postupem času stala univerzální vývojová platforma sjednocující vývoj pro mikrokontrolery různých výrobců, tak i vlastní mikrokontrolery Arduino používané v enterprise IoT zařízeních \cite{Arduino}. Na softwarové platformě Arduino lze od roku 2018 vyvíjet i pro mikrokontrolery série ESP32 pomocí oficiální implementace Arduino Core \cite{ReleasesEspressifArduinoesp32}. Ta je vrstvou integrující softwarová API Arduino nad ESP-IDF. Lze tak nejen používat Arduino jazyk pro vývoj na ESP32, ale i integrovat knihovny určené pro Arduino v ESP-IDF projektu \cite{espressifsystemsArduinoESPIDFComponent}.
+Platforma Arduino se skládá z mikrokontrolerů, programovacího jazyka, vývojového prostředí (IDE) a ekosystému Arduino knihoven. Arduino vzniklo jako učební pomůcka na Ivrea Interaction Design Institute v Miláně. Mělo za cíl vytvořit prostředí a vývojové desky, se kterými mohou pracovat i studenti bez podrobných znalostí elektroniky a programování \cite{WhatArduino}. Z čistě učební pomůcky se postupem času stala univerzální vývojová platforma sjednocující vývoj pro mikrokontrolery různých výrobců, tak i vlastní mikrokontrolery Arduino používané v enterprise IoT zařízeních \cite{Arduino}. Na softwarové platformě Arduino lze od roku 2018 vyvíjet i pro mikrokontrolery série ESP32 pomocí oficiální implementace Arduino Core \cite{ReleasesEspressifArduinoesp32}. Ta je vrstvou integrující softwarová API Arduino nad ESP-IDF. Lze tak nejen používat Arduino jazyk pro vývoj na ESP32, ale i integrovat knihovny určené pro Arduino v ESP-IDF projektu \cite{espressifsystemsArduinoESPIDFComponent}.
 
-Na této kompatibilní vrstvě je postavena knihovna Inkplate Arduino. Pro Soldered je tato knihovna pro vlajkovou lodí. Mezi zmiňovanými knihovnami v této kapitole čítá její repozitář největšímu množství příspěvků a je mezi nimi též nejstarší \ref{tab:inkplate-library-comparison}.
+Na této kompatibilní vrstvě je postavena knihovna Inkplate Arduino. Pro Soldered je tato knihovna vlajkovou lodí. Mezi knihovnami zmíněnými v této kapitole čítá její repozitář největšímu množství příspěvků a je mezi nimi též nejstarší \ref{tab:inkplate-library-comparison}.
 
-Pro Arduino existuje mnoho knihoven a návodů. Jde de facto o standard pro prototypování embedded zařízení. Na tento projekt se však příliš nehodila. Ne všechny knihovny pro ESP-IDF fungují pod Arduino Core a ne všechny Arduino knihovny fungují na ESP32. Jsem zastáncem moderních standardů C++, které nabízí ESP-IDF s relativně aktuální implementací standardu a kompilátoru. Inkplate Arduino však závisí na verzi Arduino Core, které podporuje, ještě v době psaní tohoto textu, jen staré ESP-IDF v4.4. Aktuální verze je přitom v5.2.
+Pro Arduino existuje mnoho knihoven a návodů. Jde de facto o standard pro prototypování embedded zařízení. Na tento projekt se však příliš nehodila. Ne všechny knihovny pro ESP-IDF fungují pod Arduino Core a ne všechny Arduino knihovny fungují na ESP32. Jsem zastáncem moderních standardů C++, které nabízí ESP-IDF s relativně aktuální implementací standardu a kompilátoru. Inkplate Arduino však závisí na verzi Arduino Core, které podporuje, ještě v době psaní tohoto textu, jen staré ESP-IDF v4.4. Nikoliv aktuální verzi v5.2.
 
-\begin{lstlisting}[label=src:arduino-hello-world,language=C++,caption={Ukázka programu pro vykreslení kružnice a Hello World řetězce pomocí Arduino knihovny}]
+\begin{lstlisting}[label=src:arduino-hello-world,language=C++,caption={Ilustrační použití knihovny Inkplate Arduino}]
 #include "Inkplate.h"
 
 // vytvoření instance ovladače
@@ -100,18 +100,18 @@ void setup() {
 }
 \end{lstlisting}
 
-\subsubsection{Inkplate MicroPython}
-Druhá knihovna je určena pro firmware postavený na projektu MicroPython. Jedná se kompilátor a běhové prostředí implementující programovací jazyk Python 3 optimalizované pro běh na mikrokontrolerech a v omezených prostředí. Snaží se být co nejvíce kompatbilní s běžnými desktopovými verzemi Pythonu. Nabízí tak interaktivní příkazovou řádku, správu výjimek, výpočty s libovolnou přesností, věstavěný souborový systém \cite{MicroPythonPythonMicrocontrollers}.
+V ukázce \ref{src:arduino-hello-world} je znázorněn minimalistický program sloužící k ilustraci syntaxe knihovny Inkplate Arduino. Program nejprve inicializuje ovladač panelu a vyčistí displej a jeho buffer. Poté vykreslí černou kružnici se středem v souřadnicích x=600px, y=412px a poloměrem 75px. Pod kružnici je vykreseln text ,,Hello, world!".
 
-V čem se MicroPython razantně liší od od Arduina, je proces vývoje. V prostředí Arduino (a ESP-IDF) je vyvíjená aplikace kompilována na běžném počítači spolu s celým firmwarem určeného pro mikrokontroler. Výsledný obraz sice bývá optimálnější na využití prostředků mikrokontroleru, na druhou stranu tento přístup s sebou nese náročnější proces při testování aplikace a komplexnější soubory projektu jako celku. Po instalaci běhového prostředí MicroPythonu na ESP32, lze desku připojit k počítači, kde se dá připojit k interaktivní Python konzoli běžící na mikrokontroleru a vyvíjené programy upravovat a spouštět z emulovaného flash úložiště \cite{MicroPythonPythonMicrocontrollers}. Na některých deskách lze interní filesystem připojit k systému jako běznou USB klíčenku a upravovat uložené python skripty napřímo. Není potřeba nic kompilovat, nic flashovat, ani mít v systému speciální vývojové nástroje \cite{WorkingFilesystemsMicroPython}. V případě, že mikrokontroler nepodporuje režim USB MSC, je pro kopírování souborů na desku nutno použít nástroj \lstinline|pytboard.py|, který však lze verzovat uvnitř projektu a je obsažen i v projektu Inkplate knihovny \cite{PyboardPyTool}.
+\subsubsection{Inkplate MicroPython}
+Druhá knihovna je určena pro firmware postavený na projektu MicroPython. Jedná se o kompilátor a běhové prostředí implementující programovací jazyk Python 3 optimalizované pro běh na mikrokontrolerech a v omezených prostředích. Snaží se být kompatibilní s běžnými desktopovými verzemi Pythonu. Nabízí tak interaktivní příkazovou řádku, správu výjimek, výpočty s libovolnou přesností, věstavěný souborový systém \cite{MicroPythonPythonMicrocontrollers}.
+
+V čem se MicroPython razantně liší od od Arduina, je proces vývoje. V prostředí Arduino (a ESP-IDF) je vyvíjená aplikace kompilována na běžném počítači spolu s celým firmwarem určeného pro mikrokontroler. Výsledný obraz sice bývá optimálnější na využití prostředků mikrokontroleru, na druhou stranu tento přístup s sebou nese náročnější proces při testování aplikace a komplexnější soubory projektu jako celku. Po instalaci běhového prostředí MicroPythonu na ESP32, lze desku připojit k počítači a přihlásit se k interaktivní Python konzoli běžící na mikrokontroleru a vyvíjené programy upravovat a spouštět z emulovaného flash úložiště \cite{MicroPythonPythonMicrocontrollers}. Na některých deskách lze interní filesystem připojit k systému jako běznou USB klíčenku a upravovat uložené python skripty napřímo. Bez potřeby kompilace, flashování a speciálních vývojových nástrojů \cite{WorkingFilesystemsMicroPython}. V případě, že mikrokontroler nepodporuje režim USB MSC, je pro kopírování souborů na desku nutno použít nástroj \lstinline|pytboard.py|, který však lze verzovat uvnitř projektu a je obsažen i v projektu Inkplate knihovny \cite{PyboardPyTool}.
 
 Protože vyvíjená aplikace nemusí projít kompilací před jejím nahráním na desku, je kompilátor obsažen v MicroPython firmwaru. To má vliv na použitelnou velikost flash paměti pro vyvíjený program. Stejně tak tím, že je nutné skripty při načítání zpracovat a zkompilovat do Python bajtkódu, rychlost aplikací založených na běhovém prostředí MicroPython bývá citelně nižší než jejich kompilovaná alternativa v C/C++, jako je například ESP-IDF v případě ESP32 \cite{plauskaPerformanceEvaluationMicroPython2022}.
 
-Inkplate MicroPython je jednoduchá na používání a byl jsem s ní schopen panel velmi rychle zprovoznit. Při rešerši jsem ale narazil na několik omezení, která mi ho neumožnila použít pro tento projekt.
+Inkplate MicroPython je jednoduchá na používání a byl jsem s ní schopen panel velmi rychle zprovoznit. Při rešerši jsem však narazil na několik omezení, která mi ho neumožnila použít pro tento projekt.
 
-Jedním z omezení byl výkon, při mém testování jsem zjistil, že programu stavějícím na MicroPythonu trvá překreslení obrazovky zhruba dvakrát déle než projektu postaveném na ESP-IDF. 
-
-Dalším omezením byla chybějící oficiální podpora pro aktualizace firmwaru na dálku. MicroPython sice OTA aktualizace podporuje, ale ne ve firmwaru pro variantu ESP32 na Inkplate 10. Důvodem je, že knihovna pro ovládání displeje závisí na využití externího paměťového modulu \cite{SolderedElectronicsInkplatemicropython2024}. Ten je však podporován jen ve verzi MicroPython firmwaru, která má standardní tabulku oddílů a nepodporuje bezpečné aktualizace. Protože MicroPython tuto informaci nikde přímo nezmiňuje, musel jsem si ji ověřit vyčtením tabulky oddílů ze staženého firmwaru.
+Prvním z omezení byl výkon. Při mém testování jsem zjistil, že programu stavějícím na MicroPythonu trvá překreslení obrazovky zhruba dvakrát déle než projektu postaveném na ESP-IDF. 
 
 \begin{lstlisting}[label=src:micropython-spiram-partition-table,caption={Tabulka oddílů vyčtena z MicroPython firmwaru pomocí nástroje esp32part}]
 $ ./src/esp32part (\
@@ -130,9 +130,11 @@ factory,              app,  factory,  0x00010000, 0x001f0000,
 vfs,                  data, fat,      0x00200000, 0x00200000,
 \end{lstlisting}
 
+Dále chyběla oficiální podpora pro aktualizace firmwaru na dálku. MicroPython sice OTA aktualizace podporuje, ale ne ve firmwaru pro variantu ESP32 na Inkplate 10. Důvodem je, že knihovna pro ovládání displeje závisí na využití externího paměťového modulu \cite{SolderedElectronicsInkplatemicropython2024}. Ten je však podporován jen ve verzi MicroPython firmwaru, která má standardní tabulku oddílů a nepodporuje bezpečné aktualizace. Protože MicroPython tuto informaci nikde přímo nezmiňuje, musel jsem si ji ověřit vyčtením tabulky oddílů ze staženého firmwaru. Způsob, jakým jsem tabulku vyčetl a její rozdělení je vidět na obrázku \ref{src:micropython-spiram-partition-table}.
+
 Hlavním omezením však bylo, že Inkplate MicroPython podporuje na Inkplate 10 pouze čtyři odstíny šedi, místo nativních osmi \cite{RenameINKPLATE_2BITINKPLATE_3BIT}. Nemělo smysl začínat projekt nad ekosystémem, který by nepodporoval takto specifickou funkcionalitu panelu.
 
-\begin{lstlisting}[label=src:micropython-hello-world,language=Python,caption={Ukázka programu pro vykreslení kružnice a Hello World řetězce pomocí MicroPython knihovny}]
+\begin{lstlisting}[label=src:micropython-hello-world,language=Python,caption={Ilustrační použití knihovny Inkplate MicroPython}]
 from inkplate10 import Inkplate
 
 // vytvoření instance ovladače
@@ -153,6 +155,8 @@ if __name__ == "__main__":
 }
 \end{lstlisting}
 
+Ukázka \ref{src:micropython-hello-world} znázorňuje alternativu programu \ref{src:arduino-hello-world} napsaná s použitím knihovny Inkplate MicroPython.
+
 \subsection{Komunitní knihovny}
 \subsubsection{Inkplate ESP-IDF}
 
@@ -160,9 +164,9 @@ Třetí oficiálně doporučenou knihovnou je Inkplate ESP-IDF. Ta však není v
 
 Port vznikl pro účely Turcottova projeku čtečky elektronických knih. Čtečka byla určena pro osobou mu blízkou, která po úrazu utrpěla poranění míchy a zůstala upoutána na lůžku jen s omezeným pohybem končetin. Turcott jí symbolicky projekt věnoval, po její smrti na Covid-19, koncem roku 2020 \cite{turcotteTurgu1EPubInkPlate2024}.
 
-Na této knihovně mám částečný podíl i já, protože jsem si ji zvolil jako výchozí knihovnu pro interakci se zapůjčeným panel v rámci této práce a do upstreamu se dostalo pár změn, které jsem připravil ve forku, který jsem použil ve výsledném projektu.
+Na této knihovně mám částečný podíl i já, protože jsem si ji zvolil jako výchozí knihovnu pro interakci se zapůjčeným panel v rámci této práce a do upstreamu se dostalo pár změn, které jsem připravil ve forku, použitém ve výsledném projektu.
 
-\begin{lstlisting}[label=src:esp-idf-hello-world,language=C++,caption={Ukázka programu pro vykreslení kružnice a Hello World řetězce pomocí ESP-IDF knihovny}]
+\begin{lstlisting}[label=src:esp-idf-hello-world,language=C++,caption={Ilustrační použití knihovny Inkplate ESP-IDF}]
 #include "inkplate.hpp"
 
 // vytvoření instance ovladače
@@ -187,12 +191,12 @@ extern "C" {
 }
 \end{lstlisting}
 
+Syntaxe knihovny je téměř shodná s knihovnou Inkplate Arduino. Hlavním rozdílem kódu v ukázce \ref{src:esp-idf-hello-world} je struktura programu, která je dána způsobem, jakým ESP-IDF načítá uživatelský kód.
+
 \subsection{Režim periferie}
 Mimo samostatný režim, při kterém aplikace ovládající displej běží na zabudovaném mikrokontroleru, nabízí Inkplate i režim periferie. V takovém režimu panel naslouchá na rozhraní UART na textové příkazy, které převádí na volání funkcí oficiální knihovny. Na nových panelech od Soldered bývá předinstalován jako výchozí firmware. Protože se ale jedná o firmware běžící na ESP32 a ne na samotném displeji, je distribuovaný jako ukázkový projekt v repozitáři oficiálního Arduino ovladače a je na vývojáři, aby si jej v případě potřeby zkompiloval a nahrál do zařízení \cite{SolderedElectronicsInkplatePeripheralModeRaspberryPiExample2023}.
 
-Práce s displejem je podobná ostatním zmíněným knihovnám a podporované funkce se liší primárně nutností korektně formátovat odesílané příkazy \cite{solderedelectronicsInkplatePeripheralMode}.
-
-\begin{lstlisting}[label=src:PeripheralHelloWorld,caption={Ukázka příkazů pro vykreslení kružnice a Hello World řetězce v režimu periferie}]
+\begin{lstlisting}[label=src:peripheral-hello-world,caption={Ilustrační použití režimu periferie}]
 // -- řádky odděleny /r/n ---
 // vyčištění displeje a bufferu
 #K(1)*
@@ -205,3 +209,5 @@ Práce s displejem je podobná ostatním zmíněným knihovnám a podporované f
 // částečné překreslení obrazovky
 #M(000,1199,824)*
 \end{lstlisting}
+
+Práce s displejem je podobná ostatním zmíněným knihovnám a podporované funkce se liší primárně nutností korektně formátovat odesílané příkazy a mapováním funkcí na jednoznakové identifikátory\cite{solderedelectronicsInkplatePeripheralMode}. Seznam příkazů v ukázce \ref{src:peripheral-hello-world} popisuje stejný soubor instrukcí jako programy z ukázek \ref{src:arduino-hello-world}, \ref{src:micropython-hello-world} a \ref{src:esp-idf-hello-world}. Řádky jsou odděleny oddělovačem \lstinline|/r/n|.

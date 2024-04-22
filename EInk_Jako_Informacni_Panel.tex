@@ -35,18 +35,25 @@
 \ThesisAssignmentFileName{Zadani.pdf}
 
 % Pokud nechceme nikomu dekovat makro zapoznamkujeme.
-\Acknowledgement{TODO}
+\Acknowledgement{
+    Rád bych poděkoval Ing. Davidu Seidlovi, Ph.D., za jeho odborné vedení, věcný přístup a průběžné konzultace, které mne motivovaly k vývoji. Též bych rád poděkoval svým rodičům a přátelům, za jejich dlouhodobou podporu po celou délku mého studia.
+}
 
-\CzechAbstract{TODO}
+\CzechAbstract{
+    Práce se zabývá implementací systému pro vzdálené ovládání displejů e-ink. V rámci práce je popsána technologie e-ink a možnosti programování panelů. Výsledkem je vyvinutý systém serveru, firmwaru a webového rozhraní, který umožňuje plánovat operace nad displeji. Systém byl nasazen a uveden do provozu na třech panelech instalovaných v prostorách Fakulty elektrotechniky a informatiky VŠB-TUO.
+}
 
-\CzechKeywords{esp32, inkplate, eink}
+\CzechKeywords{esp32, inkplate, e-ink, mqtt, informační panel}
 
-\EnglishAbstract{TODO}
+\EnglishAbstract{
+    The thesis deals with the implementation of a system for remote control of e-ink displays. The thesis describes the e-ink technology and the possibilities of programming the panels. The result is a developed system consisting of a server, firmware, and a web interface that enables the scheduling of operations over the displays. The system was deployed and put into operation on three panels installed on the premises of the Faculty of Electrical Engineering and Computer Science at VŠB-TUO.
+}
 
-\EnglishKeywords{esp32, inkplate, eink}
+\EnglishKeywords{esp32, inkplate, e-ink, mqtt, information panel}
 
 % bibliografie
-\addbibresource{bibliography.bib}
+\addbibresource{bibliography_0_100.bib}
+\addbibresource{bibliography_100_200.bib}
 
 % zkratky
 \input{acronyms}
@@ -77,7 +84,9 @@
 \input{Kapitoly/Navrh_systemu}
 \input{Kapitoly/Implementace}
 \input{Kapitoly/Nasazeni}
-\input{Kapitoly/Vyzvy_do_budoucna}
+\input{Kapitoly/Testovani}
+\input{Kapitoly/Budouci_vyzvy}
+
 \input{Kapitoly/Zaver}
 
 % Seznam literatury

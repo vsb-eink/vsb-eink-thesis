@@ -11,8 +11,10 @@ K sestavení projektu je potřeba mít na počítači nainstalované prostředí
     \item sestavení projektu \\ \lstinline|idf.py build|
 \end{enumerate}
 
-\subsubsection{GitHub Actions}
-Pro účely automatizace a zajištění opakovatelnosti sestavení, je v repozitáři \lstinline|vsb-eink-panel| zajištěno sestavování pomocí služby GitHub Actions. Definice procesu je uložena v souboru \lstinline|.github/workflows/build.yml|. Sestavení je spuštěno při každé úpravě soubory \lstinline|version.txt| v kořeni repozitáře, případně lze vynutit ručně.
+\subsubsection*{GitHub Actions}
+Pro účely automatizace a zajištění opakovatelnosti sestavení, je v repozitáři \lstinline|vsb-eink-panel| zajištěno sestavování pomocí služby GitHub Actions\cite{FeaturesGitHubActions2024}. Ta je součástí sítě GitHub a je určena k použití pro automatizované sestavování a testování softwaru přímo z prostředí GitHub. Umožňuje uživatelům definovat pracovní postupy, které reagují na různé události v repozitáři, jako jsou push události, pull requesty nebo dokonce plánované události. Tyto pracovní postupy jsou popsány pomocí konfiguračních souborů ve formátu YAML a mohou být konfigurovány tak, aby spouštěly různé operace jako kompilaci kódu, spuštění testů, nebo dokonce nasazení aplikací \cite{UnderstandingGitHubActions}.
+
+Definice procesu je uložena v souboru \lstinline|.github/workflows/build.yml|. Sestavení je spuštěno při každé úpravě soubory \lstinline|version.txt| v kořeni repozitáře, případně lze vynutit ručně.
 
 \begin{enumerate}
     \item projekt je naklonován
@@ -26,15 +28,15 @@ Pro účely automatizace a zajištění opakovatelnosti sestavení, je v repozit
 \subsection{Nasazení}
 Při vývoji nebo sestavování na vlastním stroji je nahrání firmwaru nejjednodušší pomocí příkazu \lstinline|idf.py flash|. Ten projekt sestaví a automaticky nahraje do panelu připojeného přes USB k počítači.
 
-Pro nahrání oficiálního vydání firmwaru, je nutné stáhnout si lokálně soubory \lstinline|bootloader.bin|, \lstinline|partition-table.bin|, \lstinline|ota_data_initial.bin| a \lstinline|vsb-eink-panel.bin| ze sekce Releases repozitáře. Ty lze poté do zařízení nahrát pomocí příkazu \lstinline|esptool.py write_flash|.
-
 \begin{lstlisting}[label=src:panel-firmware-flash, caption={Nahrání oficiálního firmwaru do panelu}]
 esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size 4MB --flash_freq 40m 0x1000 bootloader.bin 0x8000 partition-table.bin 0xd000 ota_data_initial.bin 0x10000 vsb-eink-panel.bin
 \end{lstlisting}
 
+Pro nahrání oficiálního vydání firmwaru, je nutné stáhnout si lokálně soubory \lstinline|bootloader.bin|, \lstinline|partition-table.bin|, \lstinline|ota_data_initial.bin| a \lstinline|vsb-eink-panel.bin| ze sekce Releases repozitáře. Ty lze poté do zařízení nahrát pomocí příkazu \lstinline|esptool.py write_flash| (ukázka \ref{src:panel-firmware-flash}).
+
 Konfigurace panelu je popsána v sekci \ref{konfigurace-panelu}. Připravený konfigurační soubor CSV je poté nutné nahrát do zařízení příkazem \lstinline|python scripts/provision_panel.py --flash path/to/config.csv|.
 
-Aktualizace panelů jsou možné na dálku předáním odkazu na soubor oficiálního vydání \lstinline|vsb-eink-panel.bin| skrze MQTT topic \lstinline|vsb-eink/{panel_id}/firmware/update/set|.
+Aktualizace panelů jsou možné na dálku předáním odkazu na soubor oficiálního vydání \lstinline|vsb-eink-panel.bin| skrze MQTT topik \lstinline|vsb-eink/{panel_id}/firmware/update/set|.
 
 \section{Služby serveru a aplikace}
 \subsection{Sestavení}
@@ -53,13 +55,15 @@ Pro účely nasazení je každá služba zabalena do Docker kontejneru. Jde o pl
 
 Všechny komponenty sdílejí stejný Dockerfile umístěný v kořeni repozitáře. Pro efektivní sestavení jednotlivých kontejnerových obrazů je použit tzv. Multi-stage build. Jde o rozdělení Dockerfilu do sekcí, které mohou používat různá prostředí uvnitř stejného kontextu. Praktickým příkladem je například kontejner C++ programu. V jedné sekci lze nainstalovat balíčky kompilátorů a hlaviček a sestavit program do spustitelného souboru. Ve druhé sekci stačí nainstalovat pouze balíčky potřebné ke spuštění programu a sestavený soubor programu zkopírovat z první sekce. Přínosem je snížení velikosti výsledného obrazu \cite{MultistageBuilds0100}. Každá komponenta má svou vlastní sekci pro sestavení a běh. Při sestavování pomocí příkazu \lstinline|docker build| je komponenta selektována názvem své běhové sekce pomocí argumentu \lstinline|--target|.
 
-Služby serveru jsem vytvořil virtuální stroj hostovaný na vlastním serveru uvnitř školní sítě. Pro jednotnou správu kontejnerů jsem použil nástroj Docker Compose a připravil soubor \lstinline|docker-compose.yml|, který popisuje a konfiguruje všechny služby systému. Kromě komunikace mezi službou Facade, webovou aplikací a prohlížečem, probíhá veškerá komunikace mezi službami po interní síti vytvořené v rámci spuštěné instance \lstinline|docker-compose.yml|. 
+Pro služby serveru jsem vytvořil virtuální stroj hostovaný na vlastním serveru uvnitř školní sítě. Pro jednotnou správu kontejnerů jsem použil nástroj Docker Compose a připravil soubor \lstinline|docker-compose.yml|, který popisuje a konfiguruje všechny služby systému. Kromě komunikace mezi službou Facade, webovou aplikací a prohlížečem, probíhá veškerá komunikace mezi službami po interní síti vytvořené v rámci spuštěné instance \lstinline|docker-compose.yml|. 
 
 \subsubsection{Kontejner aplikace}
-Aplikace, jakožto sada statických webových souborů, nemůže ,,běžet" samostatně. Potřebuje webový server, který soubory bude hostovat. Kontejnerizována je tedy nad obrazem kontejneru serveru Nginx, do které jsou soubory aplikace nakopírovány do výchozí sdílené složky \lstinline|/usr/share/nginx/html|. Aby výsledný kontejner bylo možné konfigurovat pomocí proměnných prostředí, stějně jako jiné kontejnery, je použit nástroj Import-meta-env. Ten při kompilaci aplikace upraví importy proměnných z objektu \lstinline|import.meta.env| tak, aby odkazovaly na proměnné na globálním objektu \lstinline|globalThis.import_meta_env|. Objekt je deklarován v souboru \lstinline|index.html| tak, aby ho bylo možné jednoduše textově nahradit. Pro zajištění, že jsou nejsou předány i citlivé proměnné, jsou nahrazeny pouze proměnné z referenčního souboru \lstinline|.env|. Před spuštěním kontejneru je zavolán příkaz \lstinline|import-meta-env --disposable --example /opt/env/.env.example --path /usr/share/nginx/html/index.html|, který v HTML souboru nahradí instance proměnných prostředí zmíněných v \lstinline|.env.example| hodnotami proměnných v běhovém prostředí.
+Aplikace, jakožto sada statických webových souborů, nemůže ,,běžet" samostatně. Potřebuje webový server, který soubory bude hostovat. Kontejnerizována je tedy nad obrazem kontejneru serveru Nginx, do které jsou soubory aplikace nakopírovány do výchozí sdílené složky \lstinline|/usr/share/nginx/html|. Aby výsledný kontejner bylo možné konfigurovat pomocí proměnných prostředí, stejně jako jiné kontejnery, je použit nástroj Import-meta-env. Ten při kompilaci aplikace upraví importy proměnných z objektu \lstinline|import.meta.env| tak, aby odkazovaly na proměnné na globálním objektu \lstinline|globalThis.import_meta_env|. Objekt je deklarován v souboru \lstinline|index.html| tak, aby ho bylo možné jednoduše textově nahradit. Pro zajištění, že jsou nejsou předány i citlivé proměnné, jsou nahrazeny pouze proměnné z referenčního souboru \lstinline|.env|. Před spuštěním kontejneru je zavolán příkaz \lstinline|import-meta-env --disposable --example /opt/env/.env.example --path /usr/share/nginx/html/index.html|, který v HTML souboru nahradí instance proměnných prostředí zmíněných v \lstinline|.env.example| hodnotami proměnných v běhovém prostředí.
 
-\subsubsection{GitHub Actions}
+\subsubsection{Automatizace sestavení}
 Podobně jako u panelu je použita služba GitHub Actions. Automat spouští sestavení při příchozím GIT tagu. Podle tagu spustí sestavení obrazů kontejneru služby či aplikace. Po sestavení jsou publikovány veřejně v registru GitHub Packages.
+
+Na serveru je nasazena služba Watchtower\cite{ContainrrrWatchtower2024}, která automaticky hlídá dostupné aktualizace všech běžících kontejnerů. Pokud se vyskytne nová verze kompatibilní s aktuální verzí, kontejner je automaticky zastaven a nahrazen novou verzí. Po sestavení nových obrazů tedy stačí jen počkat a služby na serveru se aktualizují samy bez nutného zásahu správce. Upozornění o aktualizaci je zasláno skrze službu ntfy.sh\cite{NtfyShPush}.
 
 \begin{enumerate}
     \item je spuštěn proces pro každou komponentu
@@ -69,8 +73,3 @@ Podobně jako u panelu je použita služba GitHub Actions. Automat spouští ses
     \item jsou extrahovány metadata z příchozího commitu pomocí \lstinline|docker/metadata-action|
     \item obraz kontejneru je sestaven a publikován funkcí \lstinline|docker/build-push-action|
 \end{enumerate}
-
-\section{Poznatky z provozu projektu}
-Systém byl nasazen 11. října 2023 na tři panely v prostorách školy. Specificky na panely u přednáškových sálů EC1, EC2 a EC3. Od té doby byly v nepřetržitém provozu bez jediného restartu a vážné chyby. Na panelech byl po dobu 5 měsíců zobrazován dynamická obrazovka s hodinami, počasím a novinkami ze školního RSS kanálu. Aktualizace probíhala každou minutu.
-
-Od té doby byl systém serveru předělán a nová verze funguje, s průběžnými úpravami, od 12.03.2024.

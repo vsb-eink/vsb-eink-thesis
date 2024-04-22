@@ -1,14 +1,14 @@
 \chapter{Návrh systému}
 
-Od počátku jsem navrhoval systém tak, aby panel byl co možná nejhloupější. Panel by měl jen naslouchat příkazům serveru a ty provádět. To zahrnuje příjem zobrazených dat jen ve formě bitmapových obrázků. Všechna obrazová data jsou díky tomu uniformní a ze strany serveru je možné pevně nastavit každý jednotlivý pixel.
+Od počátku jsem navrhoval systém tak, aby panel byl co možná nejméně komplexní. Panel by měl jen naslouchat příkazům serveru a ty provádět. Znamená to příjem zobrazených dat ve formě bitmapových obrázků. Všechna obrazová data jsou díky tomu uniformní a ze strany serveru je možné pevně nastavit každý jednotlivý pixel.
 
-Dále jsem věděl, že systém bude mít vždy alespoň tři části. Panel, který bude naslouchat příkazům serveru. Server, který bude udržovat nějakým způsobem komunikaci s panely. A pak klient, který bude skrze server panely ovládat. Primárně jsem nechtěl spojovat server s klientem v jeden monolit, aby bylo snazší projekt v budoucnu rozšířit například o mobilní nebo terminálovou aplikaci.
+Rozdělil jsem systém na tři části. Panel, který bude naslouchat příkazům serveru. Server, který bude udržovat nějakým způsobem komunikaci s panely. A pak klient, který bude skrze server panely ovládat. Primárně jsem nechtěl spojovat server s klientem v jeden monolit, aby bylo snazší projekt v budoucnu rozšířit například o mobilní nebo terminálovou aplikaci.
 
 \section{Nedokončené návrhy a implementace}
-Na projektu jsem pracoval průběžně v rámci celých tří let. V průběhu této doby systém prošel mnoha změnami a několika plnými přepisy. Zde je vybráno několik verzí celkové implementace, kterými projekt prošel.
+Na projektu jsem pracoval v rámci celých tří let. V průběhu této doby systém prošel mnoha změnami a několika plnými přepisy. Zde je vybráno několik verzí celkové implementace, kterými projekt prošel.
 
 \subsection{Hamilton}
-Pojmenován po softwarové inženýrce Margaret Hamilton, má první seriozní implementace systému spočívala v komunikaci panelu a serveru přes protokol WebSocket. Zprávy byly ve formátu JSON a server sloužil jen jako prostředník mezi klientem a panely. Server udržoval s panely udržoval spojení a klient mohl přes HTTP API serveru poslat panelům zprávu.
+Má první seriozní implementace systému, pojmenovaná po softwarové inženýrce Margaret Hamilton, spočívala v komunikaci panelu a serveru přes protokol WebSocket. Zprávy byly ve formátu JSON a server sloužil jen jako prostředník mezi klientem a panely. Server s panely udržoval spojení a klient mohl přes HTTP API serveru poslat panelům zprávu.
 
 \begin{figure}[h]
     \centering
@@ -23,10 +23,12 @@ Pojmenován po softwarové inženýrce Margaret Hamilton, má první seriozní i
     \label{fig:first-system-architecture}
 \end{figure}
 
-\subsubsection{Panel}
-Firmware panelu byl založen na prostředí ESP-IDF a knihovny Inkplate ESP-IDF. Podporoval osm druhů příkazů a upozornění na stisknutí kapacitních tlačítek. Firmware byl rozdělen do čtyř souběžných pracovních vláken, implementovaných pomocí FreeRTOS tasků. Vlákna mezi sebou komunikovaly přes sdílenou smyčku událostí. Vlákna byla rozdělena podle logických částí systému. Jmenovitě se staraly o Wifi, Systém, Displej a WebSocket. Toto rozdělení bylo zvoleno především pro snadnou čitelnost projektu.
+Architektura verze Hamilton je ilustrována na obrázku \ref{fig:first-system-architecture}.
 
-Za důležitou součást této implementace považuji použití sdílené smyčky událostí, která abstrahovala komunikaci mezi interními komponentami a serverem. Úloha WebsocketTask obstarávala spojení se serverem, přijaté zprávy parsovala do typově bezpečných objektů a ty teprve posílala do smyčky, ze které si je ostatní úlohy mohly vybrat a zpracovat. Selektivní události ze smyčky zase odesílala serveru ven.
+\subsubsection{Panel}
+Firmware panelu byl založen na prostředí ESP-IDF a knihovny Inkplate ESP-IDF. Podporoval osm druhů příkazů a upozornění na stisknutí kapacitních tlačítek. Firmware byl rozdělen do čtyř souběžných pracovních vláken, implementovaných pomocí FreeRTOS tasků. Vlákna mezi sebou komunikovala přes sdílenou smyčku událostí. Byla rozdělena podle logických částí systému. Jmenovitě se starala o Wifi, Systém, Displej a WebSocket. Toto rozdělení bylo zvoleno především pro snadnou čitelnost projektu.
+
+Za důležitou součást této implementace považuji použití sdílené smyčky událostí, která abstrahovala komunikaci mezi interními komponentami a serverem. Úloha WebsocketTask obstarávala spojení se serverem, přijaté zprávy parsovala do typově bezpečných objektů a ty poté posílala do smyčky, ze které si je ostatní úlohy mohly vybrat a zpracovat. Selektivní události ze smyčky serveru odesílala nazpět.
 
 Jmenovitě panel dokázal zpracovat tyto zprávy:
 
@@ -52,42 +54,44 @@ Server měl jen čtyři endpointy a byl založen technologii Node.js a framework
 
 \vspace{1cm}
 
-\begin{lstlisting}[label=src:hamilton-json-message,caption={Ukázka zprávy pro vykreslení obrázku v projektu Hamilton}]
+\begin{lstlisting}[label=src:hamilton-json-message,caption={Obsah zprávy DRAW\_IMAGE\_FROM\_URL ve verzi Hamilton}]
 {
   "type": "DRAW_IMAGE_FROM_URL",
   "data": "http://example.com"
 }
 \end{lstlisting}
 
+Kód obsahu zprávy pro vykreslení obrázku je vidět v ukázce \ref{src:hamilton-json-message}.
+
 \subsubsection{Problémy implementace}
-Hlavním problémem byl nedostatečný výkon při zpracovávání zpráv na panelu a nespolehlivost při zobrazování obrázků ze vzdáleného zdroje. Pro vykreslení obrázku musel panel přijmout zprávu, naparsovat ji, přeposlat smyčkou, vytvořit nové spojení se serverem, obrázek stáhnout, dekódovat a teprve poté zobrazit. Zprávy mohly být pro panel též příliš velké a kvůli rozdělení na více části poté nešly naparsovat.
+Hlavním problémem byl nedostatečný výkon při zpracovávání zpráv na panelu a nespolehlivost při zobrazování obrázků ze vzdáleného zdroje. Pro vykreslení obrázku musel panel přijmout zprávu, naparsovat ji, přeposlat smyčkou, vytvořit nové spojení se serverem, obrázek stáhnout, dekódovat a teprve poté zobrazit. Zprávy byly pro panel v některých případech příliš velké a kvůli rozdělení na více části poté nešly naparsovat.
 
 \subsection{Binární formát zpráv}\label{binarni-format-navrh}
 Z důvodů nejisté velikosti zpráv a náročného vykreslování JPEG obrázků, jsem se rozhodl způsob komunikace přehodnotit. Přišel jsem s komprimací zpráv do binární podoby.
 
-Každá zpráva byla sestavena z hlavičky a obsahu. Hlavička zabírala první čtyři bajty, vše po ní bylo bráno za obsah zprávy. Datový typ obsahu pevně závisel na hlavičce. V případě OTA aktualizace například byl \lstinline|char[]|. V případě černobílého obrázku byl \lstinline|uint8[]| a obrázek ve stupních šedi zase \lstinline|uint16[]|.
+Každá zpráva byla sestavena z hlavičky a obsahu. Hlavička zabírala první čtyři bajty, vše po ní bylo bráno za obsah zprávy. Datový typ obsahu pevně závisel na hlavičce. V případě OTA aktualizace například byl \lstinline|char[]|. U černobílého obrázku byl \lstinline|uint8[]| a obrázek ve stupních šedi zase \lstinline|uint16[]|.
 
 V černobílém režimu pracuje displej jen s 1 bitovou hodnotou pro každý pixel. Zakódování celého obrazu po jednotlivých bitech tedy bylo nejefektivnější řešení. Při rozlišení 1200x825 měla výsledná zpráva jen 123,75 kB + 4 B hlavičky. V režimu odstínů šedi displej pracuje se 3 bitovými hodnotami a při zakódování do 8 bitů by celé 2 bity zůstaly nepoužité. Tyto obrázky jsem tedy balil do 16 bitů po pěti pixelech. Poslední bit jsem použil jako kontrolu parity. V tomto režimu a kódování měla zpráva 396 kB + 4 B hlavičky. Důvodem implementace vlastního formátu před použitím formátu BMP je nedostatečná podpora pro jeho kódování v režimech nízké bitové hloubky v existujících knihovnách.
 
 Při rozbalování dat zakódovaného obrázku šlo číst pixely postupně z jakékoliv části, dokud měl handler k dispozici informaci, v jakém offsetu se právě nachází. Dle offsetu bajtu a pak offsetu bitu lze spočítat, na jakou pozici pixel patří.
 
 \subsubsection{Panel}
-Architektura vláken a smyčky zůstala zachována. Změnil se hlavně způsob odbavení zpráv. Při velikosti 396 kB na zprávu bylo jisté, že systém takovou zprávu rozdělí na mnoho částí a ty pošle do zaregistrovaného handleru. V centrálním handleru jsem tedy si tedy udržoval stav, jakou zprávu právě odbavuji a jaký měla typ dle její hlavičky poprvé, co jsem ji přijal. Do smyčky událostí jsem pak odeslal upravený paket bez hlavičky. Jednotlivé koncové handlery pak byly zodpovědné postupné zpracování postupně přijatých dat.
+Architektura vláken a smyčky zůstala zachována. Změnil se hlavně způsob odbavení zpráv. Při velikosti 396 kB na zprávu bylo jisté, že systém takovou zprávu rozdělí na mnoho částí a ty pošle do zaregistrovaného handleru. V centrálním handleru byl udržován stav, jaká zpráva je odbavována a jaký měla typ dle její hlavičky při prvním přijetí. Do smyčky událostí poté byl odeslán upravený paket bez hlavičky. Jednotlivé koncové handlery pak byly zodpovědné za postupné zpracování přijatých dat.
 
-Mimo změnu v kódování zpráv byl rozšířen slovník příkazů, na které panel dokáže reagovat. Především to bylo rozšíření o možnost úpravy persistentní konfigurace sítě. Panel už nepracoval s napevno zabudovanými údaji, ale ukládal si je do oddílu nevolatilní paměti. Obraz firmwaru byl stejný mezi všemi panely, při provizi panelu se po flashnutí firmwaru flashnul ještě obraz oddílu NVS, který panelu dodal jeho specifické konfigurační údaje, jako je SSID, heslo k WiFi a adresa WebSocket serveru.
+Mimo změny v kódování zpráv byl rozšířen slovník příkazů, na které panel dokáže reagovat. Především to bylo rozšíření o možnost úpravy persistentní konfigurace sítě. Panel už nepracoval s napevno zabudovanými údaji, ale ukládal si je do oddílu nevolatilní paměti. Obraz firmwaru byl stejný mezi všemi panely, při provizi panelu se po flashnutí firmwaru flashnul ještě obraz oddílu NVS, který panelu dodal jeho specifické konfigurační údaje, jako je SSID, heslo k WiFi a adresa WebSocket serveru.
 
 \subsubsection{Server}
-Server byl přepsán, byť technologie byly zachovány. Z hlediska API umožňoval cílit na specifické panely a požadavky byly zabezpečeny API klíčem. Rozhraní pro klienta a panel již nebylo stejné a kde server komunikoval s panely pomocí binárních zpráv, klient měl k dispozici běžné REST JSON API.
+Server byl přepsán, byť technologie byly zachovány. Z hlediska API umožňoval cílit na specifické panely a požadavky byly zabezpečeny API klíčem. Rozhraní pro klienta a panel již nebylo stejné a tam, kde server komunikoval s panely pomocí binárních zpráv, měl klient k dispozici běžné REST JSON API. Ukázka klientského požadavku pro vykreslení obrázku pomocí částečného překreslení je vidět na figuře \ref{src:gateway-rest-api}.
 
-\begin{lstlisting}[label=src:gateway-rest-api,caption={Ukázka požadavku na server pro částečné překreslení obrázku}]
+\begin{lstlisting}[label=src:gateway-rest-api,caption={Požadavek na server pro částečné překreslení obrázku ve verzi Birnárních zpráv}]
 POST /api/panels/a1314/commands/display
 { "mode": "1bit", "image": "data:image/gif;base64,R0lGODlhAQABAAAAACw=" }
 \end{lstlisting}
 
-Obrázky byly zpracovány na serveru převodem do barvy dle žádaného režimu a byl na nich proveden tzv. dithering, tedy proces, který převádí intenzitu odstínu na hustotu pixelů \cite{Dithering}. V praxi se jedná o snížení barevné hloubky při zachování vizuálních kvalit obrazu. Pro svou relativní jednoduchost a výslednou podobu jsem zvolil Floyd-Steinbergovu metodu.
+Obrázky byly zpracovány na serveru převodem do barvy dle žádaného režimu a byl na nich proveden tzv. dithering, tedy proces, který převádí intenzitu odstínu na hustotu pixelů \cite{Dithering}. V praxi se jedná o snížení barevné hloubky při zachování vizuálních kvalit obrazu. Pro svou relativní jednoduchost a výslednou podobu jsem zvolil Floyd-Steinbergovu metodu\cite{knuthDigitalHalftonesDot1987}\cite{hellandImageDitheringEleven2012}.
 
 \subsubsection{Klient}
-K této verzi byl vyvinut i cli klient v jazyku Python. Podporoval jak lokální, tak vzdálené obrázky, autentizaci API klíčem a odeslání nové konfigurace panelu.
+K této verzi byl vyvinut i terminálová aplikace v jazyce Python. Podporovala jak lokální, tak vzdálené obrázky, autentizaci API klíčem a odeslání nové konfigurace panelu.
 
 \begin{lstlisting}[label=src:eink-gateway-cli,caption={Ukázka programu eink-gateway-cli pro odeslání obrázku na panel}]
 $ export EINK_GATEWAY_API_KEY=your-api-key
@@ -95,29 +99,31 @@ $ export EINK_GATEWAY_API_URL=https://api.example.com
 $ eink-gateway-cli display --panel-id "98:fc:84:e9:92:df" "https://i.imgur.com/KdCorvv.jpeg"
 \end{lstlisting}
 
+V ukázce \ref{src:eink-gateway-cli} je znázorněna práce s programem \lstinline|eink-gateway-cli|. Jsou nastaveny konfigurační proměnné s autentizačním klíčem a adresou serveru. Následně je na panel s id \lstinline|98:fc:84:e9:92:df| zaslán webový obrázek \lstinline|https://i.imgur.com/KdCorvv.jpeg|.
+
 \subsubsection{Problémy implementace}
-Přesto, že tato varianta byla relativně robustní, kladla příliš vysoké nároky na komplexitu logiky serveru. Kód serveru vlastně implementoval vlastní broker zpráv, jen hůře. Pro udržitelnost projektu jsem hledal jiné řešení.
+I přesto, že tato varianta byla relativně robustní, kladla příliš vysoké nároky na komplexitu logiky serveru. Kód serveru vlastně implementoval vlastní broker zpráv, jen hůře než existující řešení na trhu, jako jsou např. NATS\cite{NATSIo}, RabbitMQ\cite{RabbitMQOneBroker} nebo Redis\cite{RedisRealtimeData}. Pro udržitelnost projektu jsem hledal jiné řešení.
 
 \subsection{Crontab}
-Jedna z variant implementace plánování odesílání obsahu byla založena na linuxové službě \lstinline|cron|. Varianta měla umožnit spravovat plánování jak ručně pomocí unixových příkazů, tak na dálku pomocí webového rozhraní.
+Jedna z variant implementace plánování odesílání obsahu byla založena na linuxové službě \lstinline|cron|. Varianta měla umožnit správu plánování jak ručně pomocí unixových příkazů, tak na dálku pomocí webového rozhraní.
 
 Cron, respektive jeho implementace Vixie Cron, nenabízí jednoduchou a spolehlivou možnost spustit jen jeden příkaz v jeden moment. Pro plánování zobrazení obsahu je zapotřebí prioritizace pravidel rozpisu a zamezení odeslání více příkazů pro stejný panel naráz. Pokusil jsem se tedy vytvořit vlastní implementaci plánovače, který by pracoval se souborem kompatibilním s nástrojem Vixie Cron. Priorita byla určena podle pořadí řádku v souboru. Čím vyšší pořadí, tím nižší priorita.
 
 Pro ruční konfiguraci byla varianta jednoduchá a spolehlivá.
 
 \subsubsection{Problémy implementace}
-Hlavním problémem byla textová podoba seznamu plánovaných úkolů. Tím, že měla udržet kompatibilitu se souborem \lstinline|crontab| a zároveň bylo nutné podporovat komentáře pro uložení popisu či jen pro orientační účely, programatická úprava byla komplikovaná neúměrně zadání. Řešení vyžadovalo zámky, opakované parsování souboru a riskování, že po manuálním zásahu se soubor poškodí. Dále by bylo nutné se zbavit samostatných komentářů a prázdných řádků, čímž by razantně snížila čitelnost souboru.
+Hlavním problémem byla textová podoba seznamu plánovaných úkolů. Tím, že měla udržet kompatibilitu se souborem \lstinline|crontab| a zároveň bylo nutné podporovat komentáře pro uložení popisu či jen pro orientační účely, programatická úprava byla komplikovaná neúměrně zadání. Řešení vyžadovalo opakované parsování souboru, ruční synchronizaci zápisu/čtení obsahu a riskování, že po manuálním zásahu bude soubor trvale poškozen. Dále by bylo nutné se zbavit samostatných komentářů a prázdných řádků, čímž by se razantně snížila čitelnost souboru.
 
 \section{Výsledný návrh}
-Hlavní změnou, která posunula projekt kupředu, bylo využití protokolu MQTT a rozdělení serveru na několik samostatných služeb ovladatelných skrze službu fasády. MQTT broker udržuje spojení s panely a službami, které potřebují s panely komunikovat. 
+Hlavní změnou, která posunula projekt kupředu, bylo využití protokolu MQTT a rozdělení serveru na několik samostatných služeb ovladatelných skrze jedinou službu poskytující přístup zvenčí. MQTT broker udržuje spojení s panely a službami, které potřebují s panely komunikovat. Celkovová architektura je ilustrována diagramem \ref{fig:final-system-architecture}.
 
 \subsection{MQTT}
-MQTT je svobodným protokolem pro asynchronní přenos zpráv po síti mezi elektronickými zařízeními. Jako standard je zaštítěn organizací OASIS. Funguje na principu publish/subscribe a díky podpoře potvrzeného doručení, je vhodný i do podmínek, kde nelze zaručit stabilní spojení. Každá zpráva je spjata s tzv. topicem, na který mohou klienti naslouchat a broker jim předává jen takové zprávy, ke kterým se přihlásili. MQTT má nízké nároky na prostředky systému a je tak vhodné pro IoT zařízení \cite{MQTTStandardIoT}.
+MQTT je svobodným protokolem pro asynchronní přenos zpráv po síti mezi elektronickými zařízeními. Jako standard je zaštítěn organizací OASIS. Funguje na principu publish/subscribe a díky podpoře potvrzeného doručení, je vhodný i do podmínek, kde nelze zaručit stabilní spojení. Každá zpráva je spjata s tzv. topikem, na kterém mohou klienti naslouchat a broker jim předává jen takové zprávy, ke kterým se přihlásili. MQTT má nízké nároky na prostředky systému a je tak vhodné pro IoT zařízení \cite{MQTTStandardIoT}.
 
 \subsection{Služby systému}
-Systém je rozložen na šest služeb. Každá vykonávající část systémových funkcí. Protože služby mezi sebou komunikují jen skrze MQTT broker nebo HTTP požadavky, je možné je provozovat i z oddělených zařízení a nemusí interně používat stejné nástroje.
+Systém je rozložen na šest služeb. Každá vykonává část systémových funkcí. Protože služby mezi sebou komunikují jen skrze MQTT broker nebo HTTP požadavky, je možné je provozovat i z oddělených zařízení a nemusí interně používat stejné nástroje.
 
-Služby jsou postaveny kolem zřetězeného zpracování zpráv určených pro panel. Hlavní ideou je, že zpáva pro panel musí projít několika kroky, které ale mohou být různě výkonně náročné a dá se očekávat jejich dodatečný vývoj. Též je tímto způsobem zajištěna vyšší robustnost systému, protože pád služby znamená jen pád jedné části řetězce. Pokud by například vypadla služba Renderer, přestal by se zobrazovat pouze HTML obsah. Obrázky a jiné druhy zpráv by fungovaly dále zcela bez výpadku. 
+Služby jsou postaveny kolem zřetězeného zpracování zpráv určených pro panel. Hlavní ideou je, že zpráva pro panel musí projít několika kroky, které ale mohou být různě náročné na výkon a dá se očekávat jejich dodatečný vývoj. Též je tímto způsobem zajištěna vyšší robustnost systému, protože pád služby znamená jen pád jedné části řetězce. Pokud by například vypadla služba Renderer, přestal by se zobrazovat pouze HTML obsah. Obrázky a jiné druhy zpráv by fungovaly dále zcela bez výpadku. 
 
 \begin{figure}[h]
     \centering
@@ -126,8 +132,10 @@ Služby jsou postaveny kolem zřetězeného zpracování zpráv určených pro p
     \label{fig:final-system-microservices}
 \end{figure}
 
+Na diagramu \ref{fig:final-system-microservices} je ilustrován tok MQTT zpráv mezi jednotlivými službami systému. Služba Scheduler je při běžném provozu původcem zpráv. Ty jsou dále předávány do služeb Renderer, Compressor a Grouper podle svého obsahu a topiku.
+
 \subsubsection*{Scheduler}
-Plánovač příkazů určených panelům. Má přístup k seznamu trojic kdy, co a komu má odeslat. Nemusí znát nic mimo tuto množinu informací. V úplném základu může být implementován i jen za pomoci kombinace plánovače \lstinline|cron| a nějakého nástroje umožňujícího odesílání MQTT zpráv.
+Plánovač příkazů určených panelům. Má přístup k seznamu úkolů, kdy co a komu má odeslat. Nemusí znát nic mimo tuto množinu informací. V úplném základu může být implementován i jen za pomoci kombinace plánovače \lstinline|cron| a nějakého nástroje umožňujícího odesílání MQTT zpráv.
 
 \subsubsection*{Renderer}
 Zpracovává zprávy s HTML obsahem. Po přijetí takové zprávy vykreslí obsah v prohlížeči a snímek obrazovky odešle MQTT zprávou zpět do oběhu.
@@ -136,7 +144,7 @@ Zpracovává zprávy s HTML obsahem. Po přijetí takové zprávy vykreslí obsa
 Převádí obrázky všech podporovaných formátů do binárního formátu.
 
 \subsubsection*{Grouper}
-Udržuje si seznam skupin panelů. Když dorazí zpráva určená pro nějaký panel a tedy ne pro nějakou z ostatních služeb, podívá se do seznamu, zda je cíl zprávy samostatný panel nebo skupina. Pokud je cílem skupina, rozešle doručenou zprávu všem panelům ve skupině.
+Udržuje si seznam skupin panelů. Když dorazí zpráva pro panel a ne pro jinou z ostatních služeb, podívá se do seznamu, zda je cíl zprávy samostatný panel nebo skupina. Pokud je cílem skupina, rozešle doručenou zprávu všem panelům ve skupině.
 
 \subsubsection*{Hoster}
 HTTP server pro ukládání a hostování uživatelských souborů. Uživatel do něj nahraje například obrázek, ten zadá do Scheduleru a Compressor si z Hosteru soubor obrázku stáhne a převede. Bez Hosteru by nebylo možné do systému nahrávat lokální obrázky.
@@ -150,7 +158,7 @@ HTTP server pro ukládání a hostování uživatelských souborů. Uživatel do
 \end{figure}
 
 \subsubsection*{Facade}
-Centrální služba zajišťující přístup ke všem ostatním službám. Je jako jediná vystavena vnější síti a nabízí zabezpečené REST API určené ke správě systému.
+Centrální služba zajišťující přístup ke všem ostatním službám. Je jako jediná vystavena vnější síti a nabízí zabezpečené REST API určené ke správě systému. Závisí na všech službách s HTTP rozhraním. Tato vazba je ilustrována diagramem \ref{fig:final-system-http-services}.
 
 \subsubsection*{Facade Client}
 Aplikace, která uživateli umožňuje systém ovládat skrze interaktivní rozhraní. Může být napsána jako terminálová, desktopová, mobilní nebo webová aplikace.

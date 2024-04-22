@@ -17,7 +17,7 @@ Server je implementován jako skupina služeb komunikující mezi sebou pomocí 
         \end{itemize}
 \end{itemize}
 
-\subsubsection{Struktura repozitáře}
+\subsubsection{Adresářová struktura repozitáře}
 \begin{itemize}
     \item .github/
         \begin{itemize}
@@ -44,7 +44,7 @@ Server je implementován jako skupina služeb komunikující mezi sebou pomocí 
 
 \subsection{Scheduler}
 \subsubsection{Datový model}
-Data jsou ukládána lokálně v SQLite databázi. Schéma, migrace a ORM klient jsou spravovány pomocí nástroje Prisma. Služba pracuje jen s jedinou tabulkou \lstinline|EInkJob|, kde každý záznam označuje jeden naplánovaný úkol. Z atributů je důležité zmínit \lstinline|content|, který označuje seznam argumentů příkazu odeslaný jako obsah zprávy. Ten je ukládán jako řetezec a aplikace je zodpovědná za jeho dekódování při čtení a kódování při zápisu. \lstinline|precise| označuje rozlišení výrazu cron, zda obsahuje sloupec vteřin či ne. \lstinline|shouldCycle| označuje, jakým způsobem má být vybrán argument příkazu. \lstinline|priority| označuje prioritu úkolu, čím vyšší číslo, tím vyšší priorita.
+Data jsou ukládána lokálně v SQLite databázi. Schéma, migrace a ORM klient jsou spravovány pomocí nástroje Prisma. Služba pracuje jen s jedinou tabulkou \lstinline|EInkJob|, na které každý záznam označuje jeden naplánovaný úkol. Z atributů je důležité zmínit \lstinline|content|, který označuje seznam argumentů příkazu odeslaný jako obsah zprávy. Ten je ukládán jako řetězec a aplikace je zodpovědná za jeho dekódování při čtení a kódování při zápisu. \lstinline|precise| označuje preciznost rozlišení výrazu cron, zda obsahuje sloupec vteřin či ne. \lstinline|shouldCycle| označuje, jakým způsobem má být vybrán argument příkazu. \lstinline|priority| označuje prioritu úkolu, čím vyšší číslo, tím vyšší priorita. \lstinline|disabled| umožňuje úkol deaktivovat, čímž zůstane uložen v databázi, ale není nikdy vykonán.
 
 \begin{lstlisting}[label=src:scheduler-schema,caption={Datové schéma třídy EInkJob}]
 model EInkJob {
@@ -67,13 +67,13 @@ model EInkJob {
 \subsubsection{Plánovač}
 Plánování funguje na principu pravidelného dotazu do databáze, kde se vyhledávají všechny nedeaktivované úkoly. Samotné vlákno plánovače je implementováno pomocí knihovny Piscina. Ta nad Node.js API Worker Threads poskytuje transparentní implementaci poolu vláken.
 
-Při dotazu je zohledněna preciznosti úkolu, priorita a stav aktivace. Výsledky jsou seřazeny nejdříve podle preciznosti vzestupně, poté dle priority sestupně a dle identifikátoru cíle opět vzestupně. Preciznost je brána podle rozlišení výrazu cron, ne však podle přenosti spuštění. Výsledky s nižší precizností jsou spuštěny před výsledky s precizností nižší protože u nich uživatel očekává spuštění v daný čas, protože mají nižší frekvenci opakování. Tato volba je otevřena diskuzi.
+Plánovač každou vteřinu prochází seznam naplánovaných úkolů. U každého úkolu je zkontrolován jeho výraz cron. V případě, že výraz popisuje aktuální čas, je úkol zpracován k publikaci. K vyhodnocení výrazu je použita knihovna \lstinline{cron-schedule}, která je použita i k plánování spuštěných smyček. 
 
-U každého úkolu je zkontrolován jeho výraz cron. V případě, že výraz popisuje aktuální čas, je úkol zpracován k publikaci. K vyhodnocení výrazu je použita knihovna \lstinline{cron-schedule}, která je použita i k plánování spuštěných smyček.
+Při dotazu na získání seznamu úkolů je zohledněna preciznost úkolu, priorita a stav aktivace. Výsledky jsou seřazeny nejdříve podle preciznosti vzestupně, poté dle priority sestupně a dle identifikátoru cíle opět vzestupně. Preciznost je brána podle rozlišení výrazu cron, ne však podle přenosti spuštění. Výsledky s nižší precizností jsou spuštěny před výsledky s precizností nižší protože u nich uživatel očekává spuštění v daný čas, protože mají nižší frekvenci opakování. Tato volba je otevřena diskuzi.
 
-Zpráva je publikována pod topicem \lstinline|vsb-eink/{target}/{command}| s tím, že proměnné \lstinline{target} a \lstinline{command} jsou přímo převzaté z položky úkoly z databáze. Pokud je atribut \lstinline{isCyclable} nastaven na \lstinline{true}, tělem zprávy je hodnota na pozici \lstinline{cycle} ze seznamu argumentů příkazu z atributu \lstinline{content} úkolu. V případě, že je hodnota atributu \lstinline{isCyclable} \lstinline{false}, je tělem zprávy první argument ze seznamu. Pokud úkol žadné argumenty nemá, je tělem zprávy prázdný řetězec.
+Zpráva je publikována pod topikem \lstinline|vsb-eink/{target}/{command}| s tím, že proměnné \lstinline{target} a \lstinline{command} jsou přímo převzaté z položky úkoly z databáze. Pokud je atribut \lstinline{isCyclable} nastaven na \lstinline{true}, tělem zprávy je hodnota na pozici \lstinline{cycle} ze seznamu argumentů příkazu z atributu \lstinline{content} úkolu. V případě, že je hodnota atributu \lstinline{isCyclable} \lstinline{false}, je tělem zprávy první argument ze seznamu. Pokud úkol žadné argumenty nemá, je tělem zprávy prázdný řetězec.
 
-\subsubsection{REST API}
+\subsubsection{REST API služby Scheduler}
 \paragraph*{/jobs} Endpoint pro CRUD operace nad tabulkou entit \lstinline{EInkJob}. Úkoly lze filtrovat podle atributů \lstinline{target}, \lstinline{precise} a \lstinline{disabled}. Pro účely mazání více úkolů najednou je při použití metody DELETE možné specifikovat více úkolů najednou query parametrem \lstinline{ids}.
 \paragraph*{/jobs/\{id\}} Endpoint pro CRUD operace nad specifickým úkolem.
 
@@ -92,11 +92,11 @@ Služba je konfigurovatelná skrze proměnné prostředí. V případě existenc
 
 \subsection{Hoster}
 \subsubsection{Uživatelský obsah}
-Primárním úkolem služby je spravovat soubory nahrané uživateli. Soubory jsou ukládány do složky určené proměnnou \lstinline{USER\_CONTENT\_PATH}.
+Primárním úkolem služby je spravovat soubory nahrané uživateli. Soubory jsou ukládány do složky určené proměnnou \lstinline{USER_CONTENT_PATH}.
 
 Pokud soubor končí příponou \lstinline|.mts|, \lstinline|.ts|, \lstinline|.mjs| nebo \lstinline|.js|, je takový soubor považován za dynamický a je při dotazu na něj načten jako modul. Očekává se, že obsahuje Fastify handler pro zpracování příchozího HTTP požadavku, který je exportován jako výchozí export modulu. Pokud se ze souboru nepodaří handler načíst, je soubor vrácen v odpovědi jako jakýkoliv jiný statický soubor. Závislosti modulu jsou totožné s rodičovským serverem. Soubory \lstinline|index.{mts,ts,mjs,js}| jsou považovány za výchozí soubor složky a jsou tak vhodné k vytvoření hezké cesty URL.
 
-\subsubsection{REST API}
+\subsubsection{REST API služby Hoster}
 API je rozděleno na části, \lstinline|/core| a \lstinline|/user|. \lstinline|/core| je určen pro správu hostovaných souborů a očekává se určitý způsob autorizace požadavků. \lstinline|/user| je naopak určen pro neautorizované požadavky s širším okruhem použití.
 
 \paragraph*{/user/\{path\}} Hostuje statické i dynamické uživatelské soubory. Statické soubory s prefixem \lstinline{_} jsou považovány za soukromé a server při požadavku na ně vrátí status 404.
@@ -151,9 +151,9 @@ Konfigurace je prováděna pomocí proměnných prostředí a případného soub
 \subsubsection{Vykreslování HTML}
 Služba naslouchá MQTT zprávám obsahující HTML soubor nebo webovou adresu. Webový obsah je zkontrolován http požadavkem s metodou HEAD. Pokud odpověď neobsahuje hlavičku s \lstinline|Content-Type: text/html|, je zpráva ignorována. Pokud je přijata MQTT zpráva se souborem HTML, je obsah souboru převeden na řetězec Data URL tak, aby s ním bylo dále možné zacházet jako s běžnou URL adresou a zároveň nemusel být uložen do souborového systému.
 
-Pro vykreslení je použita knihovna Playwright a webový prohlížeč Chromium. Soubory prohlížeče jsou verzovány spolu se službou a jsou nainstalovány automaticky spolu s ostatními knihovnami. Při startu služby je vytvořena nová instance prohlížeče v režimu headless, režimu bez grafického rozhraní. Při každém požadavku na vykreslení, je vytvořen nový kontext prohlížeče s velikostí okna dle rozlišení panelu. V nově vytvořeném kontextu je otevřena nová záložka a načtena přijatá webová adresa. Po načtení stránky je vytvořen snímek obrazovky ve formátu PNG. Snímek je pak publikován na topicu \lstinline|vsb-eink/{target}/display/png_{mode}/set|, kde \lstinline|mode| je hodnoty \lstinline|1bpp|/\lstinline|4bpp| podle přijatého požadavku.
+Pro vykreslení je použita knihovna Playwright a webový prohlížeč Chromium. Soubory prohlížeče jsou verzovány spolu se službou a jsou nainstalovány automaticky spolu s ostatními knihovnami. Při startu služby je vytvořena nová instance prohlížeče v režimu headless, režimu bez grafického rozhraní. Při každém požadavku na vykreslení, je vytvořen nový kontext prohlížeče s velikostí okna dle rozlišení panelu. V nově vytvořeném kontextu je otevřena nová záložka a načtena přijatá webová adresa. Po načtení stránky je vytvořen snímek obrazovky ve formátu PNG. Snímek je pak publikován na topiku \lstinline|vsb-eink/{target}/display/png_{mode}/set|, kde \lstinline|mode| je hodnoty \lstinline|1bpp|/\lstinline|4bpp| podle přijatého požadavku.
 
-\subsubsection{MQTT API}
+\subsubsection{MQTT API služby Renderer}
 \paragraph*{SUB vsb-eink/\{panel\_id\}/display/\{content\_type\}\_/\{mode\}/set} Žádost o vykreslení přijatého obsahu. \lstinline|content| může nabývat \lstinline|html| nebo \lstinline|url|. \lstinline|mode| určuje hloubku obrázku pro panel, tedy \lstinline|1bpp| nebo \lstinline|4bpp|.
 
 \paragraph*{PUB vsb-eink/\{panel\_id\}/display/png\_/\{mode\}/set} Odpověď na přijatou zprávu. Obsahuje snímek obrazovky ve formátu PNG v binární podobě.
@@ -171,9 +171,9 @@ Konfigurace je prováděna pomocí proměnných prostředí a případného soub
 \subsubsection{Převod obrázků}
 Služba Compressor staví na knihovně Sharp \cite{fullerLovellSharp2024} a vlastní implementaci Floyd-Steinberg dithering algoritmu.
 
-Po startu se služba zaregistruje k poslechu všech kombinací možných variant topicu \lstinline|vsb-eink/+/display/{type}_{mode}/set|, kde \lstinline|type| je formát obrázků, které podporuje knihovna Sharp a \lstinline|mode| je režim obrázku pro panel. Do parametru \lstinline|type| je navíc přidán i formát \lstinline|url|, jehož zpráva je kontrolována podobně jako u služby Renderer.
+Po startu se služba zaregistruje k poslechu všech kombinací možných variant topiku \lstinline|vsb-eink/+/display/{type}_{mode}/set|, kde \lstinline|type| je formát obrázků, které podporuje knihovna Sharp a \lstinline|mode| je režim obrázku pro panel. Do parametru \lstinline|type| je navíc přidán i formát \lstinline|url|, jehož zpráva je kontrolována podobně jako u služby Renderer.
 
-Při kompresi obrázku je nejdříve obrázek převeden do odstínů šedi, poté je zredukován na jeden barevný kanál a zmenšen na rozlišení panelu. Poté je na něj aplikován dithering s kjvantizační funkcí, která zaokrouhlí pixel na nejbližší kvantizační hladinu vypočtenou lineárně dle zadaného počtu hladin.
+Při kompresi obrázku je nejdříve obrázek převeden do odstínů šedi, poté je zredukován na jeden barevný kanál a zmenšen na rozlišení panelu. Je na něj aplikován dithering s kvantizační funkcí, která zaokrouhlí pixel na nejbližší kvantizační hladinu vypočtenou lineárně dle zadaného počtu hladin.
 
 \begin{lstlisting}[label=src:quantise-func,caption={Implementace univerzální kvantizační funkce použité při kompresi barev obrázků}]
 export type QuantiseFunc = (pixel: number) => number;
@@ -211,7 +211,7 @@ export function floydSteinberg(source: Readonly<ImageData>, quantise: QuantiseFu
 
 Obrázek je potom zkompresován do potřebné bitové hloubky a zabalen do binárního formátu, jaký je očekáván panelem.
 
-\subsubsection{MQTT API}
+\subsubsection{MQTT API služby Compressor}
 \paragraph*{SUB vsb-eink/\{panel\_id\}/display/\{type\}\_\{mode\}/set}
 Zpráva s obrázkem ke kompresi. \lstinline|type| může nabývat formátů \lstinline|jpg|, \lstinline|jpeg|, \lstinline|png|, \lstinline|webp|, \lstinline|gif|, \lstinline|avif|, \lstinline|svg| nebo \lstinline|tiff|. \lstinline|mode| označuje režim obrázku panelu \lstinline|1bpp| a \lstinline|4bpp|.
 
@@ -246,16 +246,20 @@ model Panel {
 \end{lstlisting}
 
 \subsubsection{Rozřazování zpráv}
-Služba naslouchá na topicích \lstinline|vsb-eink/+/display/raw_1bpp/set| a \lstinline|vsb-eink/+/display/raw_4bpp/set|. Z topicu vyparsuje id panelu a vyhledá ho v tabulce skupin. Pokud nalezne záznam, přepošle přijatou zprávu všem panelům z nalezené skupiny.
+Služba naslouchá na topikách \lstinline|vsb-eink/+/display/raw_1bpp/set| a \lstinline|vsb-eink/+/display/raw_4bpp/set|. Z topiku vyparsuje id panelu a vyhledá ho v tabulce skupin. Pokud nalezne záznam, přepošle přijatou zprávu všem panelům z nalezené skupiny.
 
-\subsubsection{MQTT API}
-\paragraph*{SUB vsb-eink/\{panel\_id\}/display/raw\_\{mode\}/set}
-Zpráva s obrázkem ke kompresi.
+\subsubsection{MQTT API služby Grouper}
+Služba naslouchá na všech topikách určených pouze pro panelu. Specificky jde o topiky:
+\begin{itemize}
+    \item \textbf{vsb-eink/\{panel\_id\}/display/raw\_1bpp/set}
+    \item \textbf{vsb-eink/\{panel\_id\}/display/raw\_4bpp/set}
+    \item \textbf{vsb-eink/\{panel\_id\}/display/get}
+    \item \textbf{vsb-eink/\{panel\_id\}/reboot/set}
+    \item \textbf{vsb-eink/\{panel\_id\}/firmware/update/set}
+    \item \textbf{vsb-eink/\{panel\_id\}/config/set}
+\end{itemize}
 
-\paragraph*{PUB vsb-eink/\{panel\_id\}/display/raw\_\{mode\}/set}
-Zpráva s obrázkem k zobrazení na panelu. Odpověď na přijatou zprávu.
-
-\subsubsection{REST API}
+\subsubsection{REST API služby Grouper}
 HTTP API má dva endpointy a slouží k základním CRUD operacím nad oběma tabulkami databáze. Pro potřeby synchronizace navíc podporuje metodu PUT i na seznamu obou entit. Je tedy možné jediným požadavkem přepsat efektivně celou tabulku záznamů.
 
 \paragraph*{/panels}
@@ -282,12 +286,12 @@ Služba Facade funguje jako hybrid mezi vzory fasáda (facade) a brána (gateway
 \subsubsection{Datový model}
 Facade, jako jediná služba projektu, závisí na databázi PostgreSQL. Tento databázový systém byl zvolen pro svou robustnost a množství funkcionalit plynoucích z jeho výborné podpory nástrojem Prisma. Pomocí nástroje Prisma jsou řešeny i automatické migrace databáze při startu služby.
 
-Ukládány jsou primárně data potřebná k implementaci autorizace uživatelů. Oprávnění k operacím jsou řešena vazbou skupin panelů ke skupině uživatelů. Uživatelská skupina tak má množinu panelů, ke kterým má nějaké pravomoci. Pravomoce jsou též ukládány k uživatelské skupině.
+Ukládána jsou primárně data potřebná k implementaci autorizace uživatelů. Oprávnění k operacím jsou řešena vazbou skupin panelů ke skupinám uživatelů. Uživatelská skupina tak má množinu panelů, ke kterým má nějaké pravomoce. Pravomoce jsou též ukládány k uživatelské skupině.
 
 \subsubsection{Synchronizace služeb}
 Protože jsou data panelů uložena v databázi služby Facade separovaně od dat ostatních služeb, může dojít k jejich nekonzistenci. Spolu s hlavním procesem serveru je proto spuštěna úloha synchronizující stav služeb Grouper a Scheduler s databází služby Facade. Při každé mutaci databáze je uložen indikátor nutné synchronizace. Úloha tento indikátor kontroluje každou sekundu a v případě, že je pravdivý, spustí synchronizaci obou služeb. Data jsou nahrána pomocí REST API. V případě služby Grouper jsou data nahrána jediným požadavkem \lstinline|PUT /groups|, který přepíše všechny uložené skupiny panelů. V případě služby Scheduler je stažen seznam všech úkolů z cílové služby a porovnán s lokálně evidovanými panely. Úkoly s cílem \lstinline|target|, který není znám lokálně, jsou smazány požadavkem \lstinline|DELETE /jobs?ids={}|.
 
-\paragraph{Autorizace}
+\subsubsection{Autorizace}
 Pravomoce mají variantu READ/WRITE a vstahují se k jednotlivým cestám REST API. \lstinline|GET /user/5| může například provést jakýkoliv uživatel, který je ve skupině s oprávněním \lstinline{USERS_READ}. Při změně jména uživatele pomocí \lstinline|PATCH /user/5| by bylo potřeba oprávnění \lstinline{USERS_WRITE}.
 
 Každý uživatel má přiřazenou jednu z rolí \lstinline|USER| a \lstinline|ADMIN|. Role \lstinline|ADMIN| funguje jako univerzální klíč ke všem operacím služby bez ohledu na přidělené pravomoce a panely.
@@ -303,12 +307,12 @@ onRequest: app.auth([
 ]),
 \end{lstlisting}
 
-\paragraph{Autentizace}
-Uživatelé jsou autentizováni pomocí tokenů JWT. Ten uživatel obdrží po odeslání dotazu POST se svým přihlašovacím jménem a heslem na endpoint \lstinline|/auth/login|. Hesla jsou v databázi hashována funkcí argon2 imeplementovanou knihovnou node-argon2\cite{althoffRanisaltNodeargon22024}. Token má platnost 30 dní a obsahuje identifikátor uživatele a jeho roli.
+\subsubsection{Autentizace}
+Uživatelé jsou autentizováni pomocí tokenů JWT. Uživatel token obdrží po odeslání dotazu POST se svým přihlašovacím jménem a heslem na endpoint \lstinline|/auth/login|. Hesla jsou v databázi hashována funkcí argon2 implementovanou knihovnou node-argon2\cite{althoffRanisaltNodeargon22024}. Token má platnost 30 dní a obsahuje identifikátor uživatele a jeho roli.
 
-Autentizace je kontrolována hookem \lstinline|verifyJWT|, který požadavek zkontroluje, zda obsahuje validní token a pokud ano, načte objekt uživatele do objektu \lstinline|request|, který je poté k dispozici v koncovém handleru. Pokud je požadavek neobsahuje validní token, požadavek je zamítnut a je navrácen status 401.
+Autentizace je kontrolována hookem \lstinline|verifyJWT|, který požadavek zkontroluje, zda obsahuje validní token a pokud ano, načte objekt uživatele do objektu \lstinline|request|, který je poté k dispozici v koncovém handleru. Pokud požadavek neobsahuje validní token, požadavek je zamítnut a je navrácen status 401.
 
-\subsubsection{REST API}
+\subsubsection{REST API služby Facade}
 Kompletní API je popsáno pomocí OpenAPI specifikace v souboru \lstinline|openapi.yaml| v kořeni služby. Specifikace je napsána ručně a obsahuje každou cestu API, včetně požadovaných pravomocí, stavových kódů a podrobných schémat všech datových typů. Server nabízí i dynamickou specifikaci tvořenou za běhu z registrovaných cest a schémat, ale takový objekt není dostatečně specifický pro proxy endpointy \lstinline|/hosted| a \lstinline|/schedule|. 
 
 \paragraph*{/auth}
@@ -327,7 +331,7 @@ Endpoint nabízející CRUD operace nad tabulkou uživatelů. Primární potřeb
 Endpoint nabízející CRUD operace nad tabulkou skupin uživatelů. Primární potřebné pravomoce jsou \lstinline{USERS_READ} a \lstinline{USERS_WRITE}.
 
 \paragraph*{/profile}
-Endpoint pro získání objektu právě přihlášeného uživatele. Oproti výsledku získatelného skrze \lstinline|GET /users| obsauje navíc i agregovaný seznam všech pravomocí.
+Endpoint pro získání objektu právě přihlášeného uživatele. Oproti výsledku získatelného skrze \lstinline|GET /users| obsahuje navíc i agregovaný seznam všech pravomocí.
 
 \paragraph*{/schedule}
 Endpoint pro CRUD operace nad seznamem naplánovaných úkolů. U požadavků ověřuje, zda k nim uživatel má dostatečná oprávnění a pokud ano, požadavek přepošle službě Scheduler. Primární potřebné pravomoce jsou \lstinline{SCHEDULE_READ} a \lstinline{SCHEDULE_WRITE}.
