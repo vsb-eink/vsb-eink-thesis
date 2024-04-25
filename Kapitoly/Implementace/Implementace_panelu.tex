@@ -42,11 +42,11 @@ Při sestavování jsou zde očekávány soubory klíčů sloužící k podpisu 
     \end{itemize}
     \item tasks/
     \begin{itemize}
-        \item panel/panel\_task.{cpp,h}
+        \item panel/panel\_task.\{cpp,h\}
         \begin{itemize}
             \item popis a implementace vlákna zpracovávající MQTT zprávy týkající se displeje a tlačítek
         \end{itemize}
-        \item system/system\_task.{cpp,h}
+        \item system/system\_task.\{cpp,h\}
         \begin{itemize}
             \item popis a implementace vlákna zpracovávající MQTT zprávy týkající se firmwaru a konfigurace
         \end{itemize}
@@ -55,11 +55,11 @@ Při sestavování jsou zde očekávány soubory klíčů sloužící k podpisu 
                 \item obsahuje hlavičku společnou pro všechna vlákna
             \end{itemize}
     \end{itemize}
-    \item config.{cpp,h}
+    \item config.\{cpp,h\}
     \begin{itemize}
         \item obsahuje třídu Config obstarávající správu konfigurace programu
     \end{itemize}
-    \item eink\_mqtt.{cpp,h}
+    \item eink\_mqtt.\{cpp,h\}
     \begin{itemize}
         \item obsahuje implementaci MQTT klienta zděněného z \lstinline|idf::mqtt::Client|
     \end{itemize}
@@ -91,14 +91,14 @@ Při sestavování jsou zde očekávány soubory klíčů sloužící k podpisu 
 \end{itemize}
 
 \subsection{Konfigurace programu}\label{konfigurace-panelu}
-Program používá k uložení konfigurace knihovnu NVS z prostředí ESP-IDF. Ta pro ukládání dat používání část hlavní flashové paměti kontroleru. Oddíl, který se má použít pro ukládání dat je označen značkou \verb|nvs| v tabulce oddílů. Data jsou ukládána po párech klíč-hodnota a hodnota je přitom bezpečně typována \cite{NonVolatileStorageLibrary}.
+Program používá k uložení konfigurace knihovnu NVS z prostředí ESP-IDF. Ta pro ukládání dat používání část hlavní flashové paměti kontroleru. Oddíl, který se má použít pro ukládání dat je označen značkou \lstinline|nvs| v tabulce oddílů. Data jsou ukládána po párech klíč-hodnota a hodnota je přitom bezpečně typována \cite{NonVolatileStorageLibrary}.
 
-Konfigurovatelná jsou tyto hodnoty:
+Konfigurovatelné jsou tyto hodnoty:
 \begin{itemize}
-    \item Konfigurace WiFi
+    \item Konfigurace Wi-Fi
     \begin{itemize}
-        \item ssid sítě WiFi
-        \item heslo sítě WiFi
+        \item ssid sítě Wi-Fi
+        \item heslo sítě Wi-Fi
     \end{itemize}
     \item Konfigurace panelu
     \begin{itemize}
@@ -111,11 +111,11 @@ Konfigurovatelná jsou tyto hodnoty:
     \end{itemize}
 \end{itemize}
 
-Rozděleny jsou do tří sekcí sloužících k oddělenému načítání a rollbacku konfigurace. Hodnoty ssid, hesla a adresa brokeru jsou uloženy ve dvou slotech A a B. Slot A je použit jako primární. Ve slotu B je uložena záložní/výchozí konfigurace a hodnota z něj je použita, pokud slot žádnou hodnotu buď neobsahuje nebo je nefunkční. Když se například nepodaří připojit k síti WiFi s pomocí údajů z úložiště, program použije hodnotu ze záložního slotu. Pokud se podaří s těmito údaji připojit, jsou sloty mezi sebou prohozeny, aby se při dalším startu rovnou použila správná varianta. V případě MQTT klienta se panel vrátí do předchozího nastavení a restartuje automaticky po šestém nezdařeném pokusu o připojení.
+Rozděleny jsou do tří sekcí sloužících k oddělenému načítání a rollbacku konfigurace. Hodnoty ssid, hesla a adresa brokeru jsou uloženy ve dvou slotech A a B. Slot A je použit jako primární. Ve slotu B je uložena záložní/výchozí konfigurace a hodnota z něj je použita, pokud primární slot A žádnou hodnotu buď neobsahuje nebo je nefunkční. Když se například nepodaří připojit k síti Wi-Fi s pomocí údajů z úložiště, program použije hodnotu ze záložního slotu. Pokud se podaří s těmito údaji připojit, jsou sloty mezi sebou prohozeny, aby se při dalším startu rovnou použila správná varianta. V případě MQTT klienta se panel vrátí do předchozího nastavení a následně se automaticky restartuje po šestém nezdařeném pokusu o připojení.
 
 Panel podporuje zabezpečení MQTT komunikace pomocí jména a hesla. Ty lze předat skze URL adresu brokera ve formátu \verb|mqtt://username:password@broker_url|.
 
-\begin{lstlisting}[label=src:example-nvs-csv,caption={Ukázkový provizní soubor, řádek "eepro,data" rozdělen pro účel prezentace}]
+\begin{lstlisting}[label=src:example-nvs-csv,caption={Ukázkový provizní soubor, řádek ,,eepro,data" rozdělen pro účel prezentace}]
 key,type,encoding,value
 eeprom,namespace,,
 eeprom,data,base64,VxYAAwMDAwMDAwAAAQIBAQICAQAAAgICAQICAQAA AAICAgICAQAAAwMCAQEBAgAAAwMCAgEBAgAAAgECAQIBAgAAAwMDAgICAgAU7g==
@@ -132,16 +132,16 @@ broker_url_b,data,string,"mqtt://192.168.1.164:1883"
 Při prvotním nastavování panelu je nutné připravit soubor s konfigurací (ukázka \ref{src:example-nvs-csv}). Ten je poté pomocí skriptu \lstinline{provision_panel.py} převeden na obraz oddílu NVS a nahrán do zařízení.
 
 \subsection{Hlavní vlákno}
-Hlavní vlákno, je spouštěna automaticky při startu systému a inicializuje vlákna displeje a systému. Vytvoří instanci konfiguračního správce a knihovny Inkplate, které předá vláknům jako hlavní argument.
+Hlavní vlákno, je spouštěno automaticky při startu systému a inicializuje vlákna displeje a systému. Vytvoří instanci konfiguračního správce a knihovny Inkplate, které předá vláknům jako hlavní argument.
 
-Před spuštěním vláken se připojí k WiFi a MQTT brokeru. V případě, že se připojení nezdaří, zkusí jinou konfiguraci nebo restartuje zařízení.
+Před spuštěním vláken se připojí k Wi-Fi a MQTT brokeru. V případě, že se připojení nezdaří, zkusí jinou konfiguraci nebo restartuje zařízení.
 
 \subsection{Vlákno displeje}
-Po spuštění zaregistruje handlery MQTT topiků a inicializuje třídu \lstinline|InkplateTouchpad|, která hlídá stisky kapacitních tlačítek. Ve smyčce poté vlákna každých 100 ms aktualizuje stavový automat inicializované třídy.
+Po spuštění zaregistruje handlery MQTT topiků a inicializuje třídu \lstinline|InkplateTouchpad|, která hlídá stisky kapacitních tlačítek. Ve smyčce poté každých 100 ms aktualizuje stavový automat inicializované třídy.
 
 \subsubsection*{MQTT API}
 \paragraph*{PUB vsb-eink/\{panel\_id\}/touchpad/\{button\_index\}}
-Zpráva odeslána při detekci události tlačítka touchpadu. \lstinline{button_index} může nabývat hodnot 1, 2, 3. Událost je obsažena v těle zprávy jako \verb|pressed| pro začátek doteku tlačítka a \verb|released| po jeho opuštění.
+Zpráva odeslaná při detekci události tlačítka touchpadu. \lstinline{button_index} může nabývat hodnot 1, 2, 3. Událost je obsažena v těle zprávy jako \verb|pressed| pro začátek doteku tlačítka a \verb|released| po jeho opuštění.
 
 Pro detekci událostí je vytvořen jednoduchý automat, který udržuje stav tlačítek a zpráva je odeslána při změně stavu.
 
@@ -149,7 +149,7 @@ Pro detekci událostí je vytvořen jednoduchý automat, který udržuje stav tl
 Alternativa předchozí zprávy, která identifikátor události předává místo těla v topiku zprávy.
 
 \paragraph*{SUB vsb-eink/\{panel\_id\}/display/raw\_1bpp/set}
-Obsahuje binární podobu obrázku, který se má vykreslit na displej částečným překreslením. Každé desáté vykreslení způsobí překreslení plné kvůli prodloužení života displeje.
+Obsahuje binární podobu obrázku, který se má vykreslit na displej částečným překreslením. Každé desáté vykreslení způsobí plné překreslení kvůli prodloužení života displeje.
 
 Interně nazvaný formát raw 1bpp je inspirovaný formátem BMP. Každý pixel je reprezentován 1 bitem. Pixely jsou baleny po skupinách osmi pixelů do jednoho bajtu. Pixel nejvíce nalevo je uložen v nejvyšším bitu. Mezi řádky obrázku není žádný oddělovač a pro dekódování je nutné znát rozlišení obrázku dopředu. Po obdržení zprávy si panel ověří očekávanou a skutečnou velikost přijatého obrázku V případě, že se velikosti neshodují, přijatou zprávu ignoruje.
 
@@ -168,7 +168,7 @@ enums:
     1: black
 \end{lstlisting}
 
-Formát je popsán schématem Kaitai\cite{KaitaiioKaitai_struct2024}, který je možné použít k vygenerování knihovny pro snadnější kódování a dekódování zpráv pro mnoho programovacích jazyků. Schéma formátu raw 1bpp je ve své zjednnodušené podobě bez komentářů popsáno v ukázce \ref{src:kaitai-1bpp}.
+Formát je popsán schématem Kaitai\cite{KaitaiioKaitai_struct2024}, které je možné použít k vygenerování knihovny pro snadnější kódování a dekódování zpráv pro mnoho programovacích jazyků. Schéma formátu raw 1bpp je ve své zjednnodušené podobě bez komentářů popsáno v ukázce \ref{src:kaitai-1bpp}.
 
 \paragraph*{SUB vsb-eink/\{panel\_id\}/display/raw\_4bpp/set}
 Obsahuje binární podobu obrázku v režimu odstínů šedi, který se vykreslí plným překreslením displeje.
@@ -246,7 +246,7 @@ Interně nazvaný formát raw 4bpp je, podobně jako raw 1bpp inspirován formá
 \end{figure}
 
 \paragraph*{SUB vsb-eink/\{panel\_id\}/display/get}
-Po přijetí panel panel sestaví obrázek uložený v bufferu displeje a publikuje jej na topiku vsb-eink/\{panel\_id\}/display.
+Po přijetí panel sestaví obrázek uložený v bufferu displeje a publikuje jej na topiku \verb|vsb-eink/{panel_id}/display|.
 
 \paragraph*{PUB vsb-eink/\{panel\_id\}/display}
 Publikovaný aktuálně zobrazený obraz na displeji. Formát dat se liší podle režimu displeje. Může být buď ve formátu raw 1bpp nebo raw 4bpp.
@@ -283,7 +283,7 @@ Restartuje zařízení.
 Tělo zprávy obsahuje řetězec URL adresy binárního souboru s novým firmwarem. Adresa je poté předána interní knihovně ESP HTTPS OTA, která naváže se serverem spojení, ověří, že je firmware podepsán validním klíčem a následně jej postupně stáhne a aplikuje do druhého slotu flash paměti. Po úspěšném nahrání je zařízení restartováno a nový firmware je spuštěn. Pokud se nezdaří do nového slotu nabootovat, je obnoven původní firmware.
 
 \paragraph*{PUB vsb-eink/\{panel\_id\}/system}
-Každou sekundu odesílaná zpráva o stavu systému. Obsahuje název sítě WiFi, ke které je panel připojen, síla signálu, doba, jak dlouho je panel zapnutý, velikost volné paměti, minimální naměřenou hodnotu volné paměti a verzi firmwaru. Jde o jedinou zprávu, kterou panel odesílá aktivně bez předchozího požadavku. Je užitečná při provizi panelu, protože je indikátorem úspěšné konfigurace.
+Každou sekundu odesílaná zpráva o stavu systému. Obsahuje název sítě Wi-Fi, ke které je panel připojen, sílu signálu, doba, jak dlouho je panel zapnutý, velikost volné paměti, minimální naměřenou hodnotu volné paměti a verzi firmwaru. Jde o jedinou zprávu, kterou panel odesílá aktivně bez předchozího požadavku. Je užitečná při provizi panelu, protože je indikátorem úspěšné konfigurace.
 
 \begin{lstlisting}[label=src:example-system-status,caption={Ukázka zprávy stavu systému}]
     {
@@ -301,7 +301,7 @@ Každou sekundu odesílaná zpráva o stavu systému. Obsahuje název sítě WiF
 Ukázka \ref{src:example-system-status} zobrazuje obsah zprávy z topiku \lstinline|vsb-eink/{panel_id}/system| z panelu s firmwarem verze \verb|2.1.3|.
 
 \subsection{Modifikace Inkplate ESP-IDF}
-Při vývoji s Inkplate ESP-IDF jsem narazil na několik nedostatků, které mě donutily nedostatky konzultovat s jejím vývojářem a některé jsem sám opravil ve vlastním forku \cite{TajnymagESPIDFInkPlateESPIDFInkPlate}. Ten jsem do projektu zakomponoval jako git submodul ve složce \verb|components/inkplate|.
+Při vývoji s Inkplate ESP-IDF jsem narazil na několik nedostatků, které mn donutily nedostatky konzultovat s jejím vývojářem a některé jsem sám opravil ve vlastním forku \cite{TajnymagESPIDFInkPlateESPIDFInkPlate}. Ten jsem do projektu zakomponoval jako git submodul ve složce \verb|components/inkplate|.
 
 \subsubsection{Závislost na platformě PlatformIO} Původní verze Inkplate ESP-IDF byla připravena pro integraci v platformě PlatformIO. Ta slouží jako nástroj usnadňující práci s vývojovými prostředími embedded systémů. Sjednocuje tak příkazy pro inicializaci správné verze prostředí, konfiguraci parametrů desky, sestavení, flash apod \cite{WhatPlatformIOPlatformIO}. V době, kdy jsem ale projekt zakládal, nepodporovalo PlatformIO IDF verze 5.0 a nefungovala mi její integrace v prostředí editoru CLion. Naštěstí bylo potřeba jen vytvořit soubor \lstinline|CMakeLists.txt| registrující knihovnu jako komponentu ESP-IDF a zdokumentovat ruční instalaci knihovny do existujících ESP-IDF projektů.
 
@@ -330,6 +330,6 @@ Inkplate ESP-IDF nepodporoval jakoukoliv formu změny použité tabulky. Na můj
 
 \subsubsection{Chyba certifikátu} Knihovna sice podporovala načítání obrázků ze vzdáleného http serveru, ale padala při snaze o načtení https adres. Bylo nutné přiřadit do interního síťového klienta balík s certifikáty \cite{MenuconfigVariantSelection}.
 
-\subsubsection{Znovunavázání Wi-Fi spojení} Inkplate ESP-IDF obsahuje pomocnou funkci \lstinline|Display::joinAP()|, pro usnadnění připojení desky k síti. Při testování vyšlo najevo, že se při nezdařeném spojení \lstinline|joinAp()| již znovu nepřipojí. Na vině bylo chybné resetování adaptéru ESP-NETIF a kontroly připojeného stavu \cite{MenuconfigVariantSelection}. Knihovna inicializovala adaptér globálně a při odpojení od sítě jej nezničila. Instanci adaptéru jsem při inicializaci v \lstinline|joinAP()| uložil do proměnné a v \lstinline|Display::disconnect()| zničil a resetoval pomocí funkcí \lstinline|esp_netif_destroy_default_wifi()| a \lstinline|esp_wifi_restore()|\cite{FixedAPReconnection}. Též jsem implementoval funkci \lstinline|Display::forceDisconnect()|, která lze použít pro odpojení a resetování adaptéru sítě bez ohledu na stav připojení panelu\cite{FixedInvalidState}.
+\subsubsection{Znovunavázání Wi-Fi spojení} Inkplate ESP-IDF obsahuje pomocnou funkci \lstinline|Display::joinAP()|, pro usnadnění připojení desky k síti. Při testování vyšlo najevo, že se při nezdařeném spojení \lstinline|joinAp()| již znovu nepřipojí. Na vině bylo chybné resetování adaptéru ESP-NETIF a kontroly připojeného stavu \cite{MenuconfigVariantSelection}. Knihovna inicializovala adaptér globálně a při odpojení od sítě jej nezničila. Instanci adaptéru jsem při inicializaci v \lstinline|joinAP()| uložil do proměnné a v \lstinline|Display::disconnect()| zničil a resetoval pomocí funkcí \lstinline|esp_netif_destroy_default_wifi()| a \lstinline|esp_wifi_restore()|\cite{FixedAPReconnection}. Též jsem implementoval funkci \lstinline|Display::forceDisconnect()|, kterou lze použít pro odpojení a resetování adaptéru sítě bez ohledu na stav připojení panelu\cite{FixedInvalidState}.
 
-\subsubsection{Optimalizace velikosti firmware} Při vývoji jsem také narazil na problém nedostatku místa na flash paměti mikrokontroleru. V jeden moment mi, i po deaktivaci nepotřebných modulů v konfiguraci ESP-IDF, zbývalo jen 48 kB, tedy zhruba 3 \% volného místa na oddílu aplikace. Ve výpisu nástroje \lstinline|idf.py size-components| se zdála původcem problému komponenta \lstinline|libstdc++.a| zabírající přes 201 kB paměti. O 70 \% více než druhá největší komponenta \lstinline|libstdc.a|. V mém kódu jsem nenalezl žádný zjevný důvod takovému nárůstu. Dle dokumentace jsem zaměnil implementaci formátování řetězců za Newlib Nano \cite{MinimizingBinarySize}. Tato změna sama o sobě způsobila zmizení \lstinline|libstdc.a| ze seznamu největších komponent a uvolnila dalších 100 kB místa. \lstinline|libstdc++.a| ale stále zůstala jako hlavní problém. Ani optimalizace kompilátoru a prostředí mi nepomohly. Po průchodu vlastním kódem jsem začal analyzovat kód knihovny Inkplate ESP-IDF. V té \lstinline|libstdc++.a| též figurovala jako největší komponenta projektu. Čirou náhodou jsem v souboru ovladače pro variantu Inkplate 10 narazil na nepoužívanou inkluzi hlavičky \lstinline|iostream|. Po jejím odstranění \lstinline|libstdc++.a| též zmizela ze seznamu a v kombinaci s touto změnou se volné místo na flash paměti rozšířilo o dalších 15 \%. Na konci optimalizací jsem skončil s 26 \% volného místa na oddílu aplikace.
+\subsubsection{Optimalizace velikosti firmware} Při vývoji jsem také narazil na problém nedostatku místa na flash paměti mikrokontroleru. V jeden moment mi, i po deaktivaci nepotřebných modulů v konfiguraci ESP-IDF, zbývalo jen 48 kB, tedy zhruba 3 \% volného místa na oddílu aplikace. Ve výpisu nástroje \lstinline|idf.py size-components| se zdála původcem problému komponenta \lstinline|libstdc++.a| zabírající přes 201 kB paměti. O 70 \% více než druhá největší komponenta \lstinline|libstdc.a|. V mém kódu jsem nenalezl žádný zjevný důvod takovému nárůstu. Dle dokumentace jsem zaměnil implementaci formátování řetězců za Newlib Nano \cite{MinimizingBinarySize}. Tato změna sama o sobě způsobila výstup \lstinline|libstdc.a| ze seznamu největších komponent a uvolnila dalších 100 kB místa. \lstinline|libstdc++.a| ale stále zůstala jako hlavní problém. Nepomohly ani optimalizace kompilátoru a prostředí. Po průchodu vlastního kódu jsem začal analyzovat kód knihovny Inkplate ESP-IDF. V té \lstinline|libstdc++.a| též figurovala jako největší komponenta projektu. Čirou náhodou jsem v souboru ovladače pro variantu Inkplate 10 narazil na nepoužívanou inkluzi hlavičky \lstinline|iostream|. Po jejím odstranění \lstinline|libstdc++.a| též zmizela ze seznamu a v kombinaci s touto změnou se volné místo na flash paměti rozšířilo o dalších 15 \%. Na konci optimalizací jsem skončil s 26 \% volného místa na oddílu aplikace.

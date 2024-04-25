@@ -2,7 +2,7 @@
 
 V rámci této diplomové práce byl vyvinut systém pro správu informačního panelu s využitím modulu e-ink displeje Inkplate 10. Cílem bylo vytvořit program pro e-ink displej, který umožní zobrazování různých informací, jako je rozvrh místnosti, obrázky, jednoduché animace a další, a to prostřednictvím spojení s nadřazeným systémem přes síť Wi-Fi.
 
-V rámci práce je stručně popsán použitý hardware. Dále je popsán stav oficiálně dostupných knihoven podporujících panely Inkplate. Při vývoji bylo zjištěno, že zvolená knihovna Inkplate ESP-IDF obsahuje určité nedostatky. Byl vytvořen fork této knihovny a byl upraven tak, aby ji bylo možné dále používat.
+V rámci práce je stručně popsán použitý hardware. Dále je popsán stav oficiálně dostupných knihoven podporujících panely Inkplate. Při vývoji bylo zjištěno, že zvolená knihovna Inkplate ESP-IDF obsahuje určité nedostatky. Byl vytvořen fork této knihovny a ten byl upraven tak, aby ji bylo možné dále používat.
 
 Byl vytvořen program, který umožňuje modulu e-ink displeje připojení k nadřazenému systému přes Wi-Fi s využitím MQTT protokolu. Program je schopen zobrazovat bitmapové obrázky a pomocí MQTT zpráv jej lze konfigurovat.
 
@@ -12,10 +12,10 @@ Systém byl nasazen na panelech u přednáškových místností EC1, EC2 a EC3. 
 
 V rámci testování se ukázaly nedostatky v efektivitě některých služeb, zejména služby Renderer, zodpovědné za zpracování webových dokumentů pro zobrazení na e-ink panelech. Tato část systému by měla být v budoucnu optimalizována tak, aby byla zajištěna kompatibilita s komplexními webovými dokumenty a včasného zobrazení obsahu. Případně musí být tato služba provozována na výkonnějším serveru, než který jsem měl k dispozici.
 
-Osobně plánuji pokračovat ve vývoji systému i nadále. Panel Inkplate 10 jsem si pořídil pro soukromé účely a chci jej využít jako obrazovku pro zobrazení dat služby Home Assistant\cite{HomeassistantCoreHouse_with_garden}.
+Osobně plánuji pokračovat ve vývoji systému i nadále. Panel Inkplate 10 si hodlám pořídit pro soukromé účely a chci jej využít jako obrazovku pro zobrazení dat služby Home Assistant\cite{HomeassistantCoreHouse_with_garden}.
 
 \newpage
-Projekt je vyvíjen otevřeně na platformě GitHub pod organizací vsb-eink.
+Projekt je vyvíjen otevřeně na platformě GitHub pod organizací \href{https://github.com/vsb-eink/}{VŠB-EInk}.
 \begin{table}[h]
     \begin{tabular}{ll}
         Monorepozitář serveru + aplikace & \url{https://github.com/vsb-eink/vsb-eink-services} \\
