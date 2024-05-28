@@ -16,7 +16,7 @@ Má první seriozní implementace systému, pojmenovaná po softwarové inžený
         \node (server) [rect]  {server};
         \node (panel) [rect, below left of=server] {panel};
         \node (klient) [rect, below right of=server] {klient};
-        \draw[->] (panel) -- (server) node[midway, left] {websocket};
+        \draw[<->] (panel) -- (server) node[midway, left] {websocket};
         \draw[->] (klient) -- (server) node[midway, right] {http};
     \end{tikzpicture}
     \caption{Diagram architektury první verze systému}
@@ -78,10 +78,10 @@ Při rozbalování dat zakódovaného obrázku šlo číst pixely postupně z ja
 \subsubsection{Panel}
 Architektura vláken a smyčky zůstala zachována. Změnil se hlavně způsob odbavení zpráv. Při velikosti 396 kB na zprávu bylo jisté, že systém takovou zprávu rozdělí na mnoho částí a ty pošle do zaregistrovaného handleru. V centrálním handleru byl udržován stav, jaká zpráva je odbavována a jaký měla typ dle její hlavičky při prvním přijetí. Do smyčky událostí poté byl odeslán upravený paket bez hlavičky. Jednotlivé koncové handlery pak byly zodpovědné za postupné zpracování přijatých dat.
 
-Mimo změny v kódování zpráv byl rozšířen slovník příkazů, na které panel dokáže reagovat. Především to bylo rozšíření o možnost úpravy persistentní konfigurace sítě. Panel už nepracoval s napevno zabudovanými údaji, ale ukládal si je do oddílu nevolatilní paměti. Obraz firmwaru byl stejný mezi všemi panely, při provizi panelu se po flashnutí firmwaru flashnul ještě obraz oddílu NVS, který panelu dodal jeho specifické konfigurační údaje, jako je SSID, heslo k Wi-Fi a adresa WebSocket serveru.
+Mimo změny v kódování zpráv byl rozšířen slovník příkazů, na které panel dokáže reagovat. Především to bylo rozšíření o možnost úpravy persistentní konfigurace sítě. Panel už nepracoval s napevno zabudovanými údaji, ale ukládal si je do oddílu nevolatilní paměti. Obraz firmwaru byl stejný mezi všemi panely. Při provizi panelu byl do zařízení nahrán obraz oddílu NVS, který panelu dodal jeho specifické konfigurační údaje, jako je SSID, heslo k Wi-Fi a adresa WebSocket serveru.
 
 \subsubsection{Server}
-Server byl přepsán, byť technologie byly zachovány. Z hlediska API umožňoval cílit na specifické panely a požadavky byly zabezpečeny API klíčem. Rozhraní pro klienta a panel již nebylo stejné a tam, kde server komunikoval s panely pomocí binárních zpráv, měl klient k dispozici běžné REST JSON API. Ukázka klientského požadavku pro vykreslení obrázku pomocí částečného překreslení je vidět na figuře \ref{src:gateway-rest-api}.
+Server byl přepsán, byť technologie byly zachovány. Z hlediska API umožňoval cílit na specifické panely a požadavky byly zabezpečeny API klíčem. Rozhraní pro klienta a panel již nebylo stejné a tam, kde server komunikoval s panely pomocí binárních zpráv, měl klient k dispozici běžné REST JSON API. Ukázka klientského požadavku pro vykreslení obrázku pomocí částečného překreslení je vidět na ukázce \ref{src:gateway-rest-api}.
 
 \begin{lstlisting}[label=src:gateway-rest-api,caption={Požadavek na server pro částečné překreslení obrázku ve verzi Birnárních zpráv}]
 POST /api/panels/a1314/commands/display
@@ -90,7 +90,7 @@ POST /api/panels/a1314/commands/display
 
 Obrázky byly zpracovány na serveru převodem do barvy dle žádaného režimu a byl na nich proveden tzv. dithering, tedy proces, který převádí intenzitu odstínu na hustotu pixelů \cite{Dithering}. V praxi se jedná o snížení barevné hloubky při zachování vizuálních kvalit obrazu. Pro svou relativní jednoduchost a výslednou podobu jsem zvolil Floyd-Steinbergovu metodu\cite{knuthDigitalHalftonesDot1987}\cite{hellandImageDitheringEleven2012}.
 
-\subsubsection{Klient}
+\subsubsection{Klient}\label{eink-gateway-cli}
 K této verzi byla vyvinuta i terminálová aplikace v jazyce Python. Podporovala jak lokální, tak vzdálené obrázky, autentizaci API klíčem a odeslání nové konfigurace panelu.
 
 \begin{lstlisting}[label=src:eink-gateway-cli,caption={Ukázka programu eink-gateway-cli pro odeslání obrázku na panel}]
@@ -105,11 +105,11 @@ V ukázce \ref{src:eink-gateway-cli} je znázorněna práce s programem \lstinli
 I přesto, že tato varianta byla relativně robustní, kladla příliš vysoké nároky na komplexitu logiky serveru. Kód serveru vlastně implementoval vlastní broker zpráv, jen hůře než existující řešení na trhu, jako jsou např. NATS\cite{NATSIo}, RabbitMQ\cite{RabbitMQOneBroker} nebo Redis\cite{RedisRealtimeData}. Pro udržitelnost projektu jsem hledal jiné řešení.
 
 \subsection{Crontab}
-Jedna z variant implementace plánování odesílání obsahu byla založena na linuxové službě \lstinline|cron|. Varianta měla umožnit správu plánování jak ručně pomocí unixových příkazů, tak na dálku pomocí webového rozhraní.
+Jedna z variant implementace plánování odesílání obsahu byla založena na linuxové službě \lstinline|cron|. Varianta měla umožnit správu plánování jak ručně pomocí unixových příkazů, tak na dálku pomocí webového rozhraní. Varianta se překrývá s finálním návrhem z hlediska strany panelu a komunikačního protokolu. Byl vytvořen shellový skript, který po spuštění vykreslil HTML soubor do souboru, který byl poté odeslán na seznam panelů pomocí upravené verze \lstinline|eink-gateway-cli|(\ref{eink-gateway-cli}). Skript byl zaregistrován ve službě \lstinline|cron|.
 
-Cron, respektive jeho implementace Vixie Cron, nenabízí jednoduchou a spolehlivou možnost spustit jen jeden příkaz v jeden moment. Pro plánování zobrazení obsahu je zapotřebí prioritizace pravidel rozpisu a zamezení odeslání více příkazů pro stejný panel naráz. Pokusil jsem se tedy vytvořit vlastní implementaci plánovače, který by pracoval se souborem kompatibilním s nástrojem Vixie Cron. Priorita byla určena podle pořadí řádku v souboru. Čím vyšší pořadí, tím nižší priorita.
+Cron, respektive jeho implementace Vixie Cron, však nenabízí jednoduchou a spolehlivou možnost spustit jen jeden příkaz v jeden moment. Pro plánování zobrazení obsahu je zapotřebí prioritizace pravidel rozpisu a zamezení odeslání více příkazů pro stejný panel naráz. Pokusil jsem se tedy vytvořit vlastní implementaci plánovače, který by pracoval se souborem kompatibilním s nástrojem Vixie Cron. Priorita byla určena podle pořadí řádku v souboru. Čím vyšší pořadí, tím nižší priorita.
 
-Pro ruční konfiguraci byla varianta jednoduchá a spolehlivá.
+Pro ruční konfiguraci byla varianta jednoduchá a spolehlivá. Terminálová aplikace použitá pro komunikaci s panelem byla rozšířena a je použitelná i ve finální variantě systému \cite{VsbeinkVsbeinkmqttgwcli}.
 
 \subsubsection{Problémy implementace}
 Hlavním problémem byla textová podoba seznamu plánovaných úkolů. Tím, že měla udržet kompatibilitu se souborem \lstinline|crontab| a zároveň bylo nutné podporovat komentáře pro uložení popisu či jen pro orientační účely, programatická úprava byla komplikovaná neúměrně zadání. Řešení vyžadovalo opakované parsování souboru, ruční synchronizaci zápisu/čtení obsahu a riskování, že po manuálním zásahu bude soubor trvale poškozen. Dále by bylo nutné se zbavit samostatných komentářů a prázdných řádků, čímž by se razantně snížila čitelnost souboru.

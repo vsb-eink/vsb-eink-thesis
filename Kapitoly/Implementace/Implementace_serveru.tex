@@ -44,7 +44,7 @@ Server je implementován jako skupina služeb komunikující mezi sebou pomocí 
 
 \subsection{Scheduler}
 \subsubsection{Datový model}
-Data jsou ukládána lokálně v SQLite databázi. Schéma, migrace a ORM klient jsou spravovány pomocí nástroje Prisma. Služba pracuje jen s jedinou tabulkou \lstinline|EInkJob|, na které každý záznam označuje jeden naplánovaný úkol. Z atributů je důležité zmínit \lstinline|content|, který označuje seznam argumentů příkazu odeslaný jako obsah zprávy. Ten je ukládán jako řetězec a aplikace je zodpovědná za jeho dekódování při čtení a kódování při zápisu. \lstinline|precise| označuje preciznost rozlišení výrazu cron, zda obsahuje sloupec vteřin či ne. \lstinline|shouldCycle| označuje, jakým způsobem má být vybrán argument příkazu. \lstinline|priority| označuje prioritu úkolu, čím vyšší číslo, tím vyšší priorita. \lstinline|disabled| umožňuje úkol deaktivovat, čímž zůstane uložen v databázi, ale není nikdy vykonán. Schéma tabulky je přiloženo v ukázce \ref{src:scheduler-schema}.
+Data jsou ukládána lokálně v SQLite databázi. Schéma, migrace a ORM klient jsou spravovány pomocí nástroje Prisma. Služba pracuje jen s jedinou tabulkou \lstinline|EInkJob|, na které každý záznam označuje jeden naplánovaný úkol. Z atributů je důležité zmínit \lstinline|content|, který označuje seznam argumentů příkazu odeslaný jako obsah zprávy. Ten je ukládán jako řetězec a aplikace je zodpovědná za jeho dekódování při čtení a kódování při zápisu. \lstinline|precise| označuje preciznost rozlišení výrazu cron, zda obsahuje sloupec vteřin či ne. \lstinline|shouldCycle| označuje, jakým způsobem má být vybrán argument příkazu. \lstinline|priority| označuje prioritu úkolu, čím vyšší číslo, tím vyšší priorita. \lstinline|disabled| umožňuje úkol deaktivovat, čímž zůstane uložen v databázi, ale není nikdy vykonán. \lstinline|oneShot| označuje úkol jako jednorázový. Schéma tabulky je přiloženo v ukázce \ref{src:scheduler-schema}.
 
 \begin{lstlisting}[label=src:scheduler-schema,caption={Datové schéma třídy EInkJob}]
 model EInkJob {
@@ -60,6 +60,7 @@ model EInkJob {
   cycle       Int     @default(0)
   shouldCycle Boolean @default(false)
   disabled    Boolean @default(false)
+  oneShot     Boolean @default(false)
   @@unique([target, cron])
 }
 \end{lstlisting}
@@ -72,6 +73,8 @@ Plánovač každou vteřinu prochází seznam naplánovaných úkolů. U každé
 Při dotazu na získání seznamu úkolů je zohledněna preciznost úkolu, priorita a stav aktivace. Výsledky jsou seřazeny nejdříve podle preciznosti vzestupně, poté dle priority sestupně a dle identifikátoru cíle opět vzestupně. Preciznost je brána podle rozlišení výrazu cron, ne však podle přenosti spuštění. Výsledky s nižší precizností jsou spuštěny před výsledky s precizností nižší protože u nich uživatel očekává spuštění v daný čas, protože mají nižší frekvenci opakování. Tato volba je otevřena diskuzi.
 
 Zpráva je publikována pod topikem \lstinline|vsb-eink/{target}/{command}| s tím, že proměnné \lstinline{target} a \lstinline{command} jsou přímo převzaté z položky úkolu z databáze. Pokud je atribut \lstinline{isCyclable} nastaven na \lstinline{true}, tělem zprávy je hodnota na pozici \lstinline{cycle} ze seznamu argumentů příkazu z atributu \lstinline{content} úkolu. V případě, že je hodnota atributu \lstinline{isCyclable} \lstinline{false}, je tělem zprávy první argument ze seznamu. Pokud úkol žadné argumenty nemá, je tělem zprávy prázdný řetězec.
+
+Pokud je hodnota atributu \lstinline|oneShot| pravdivá, je aktuální úkol odebrán z databáze po jeho prvním vykonání. Speciálním případem jsou cyklické úkoly (\lstinline|isCyclable|), které jsou mazány až po provedení jejich posledního cyklu.
 
 \subsubsection{REST API služby Scheduler}
 \paragraph*{/jobs} Endpoint pro CRUD operace nad tabulkou entit \lstinline{EInkJob}. Úkoly lze filtrovat podle atributů \lstinline{target}, \lstinline{precise} a \lstinline{disabled}. Pro účely mazání více úkolů najednou je při použití metody DELETE možné specifikovat více úkolů najednou query parametrem \lstinline{ids}.
@@ -101,9 +104,6 @@ Pokud soubor končí příponou \lstinline|.mts|, \lstinline|.ts|, \lstinline|.m
 API je rozděleno na části, \lstinline|/core| a \lstinline|/user|. \lstinline|/core| je určen pro správu hostovaných souborů a očekává se určitý způsob autorizace požadavků. \lstinline|/user| je naopak určen pro neautorizované požadavky s širším okruhem použití.
 
 \paragraph*{/user/\{path\}} Hostuje statické i dynamické uživatelské soubory. Statické soubory s prefixem \lstinline{_} jsou považovány za soukromé a server při požadavku na ně vrátí status 404.
-
-\paragraph*{/core/proxy/\{url\}}
-Pomocný endpoint pro přístup k externím zdrojům, které by za normálních okolností nebyly přístupné. Vhodný například pro načítání externích API bez potřebných CORS hlaviček z HTML stránek vykreslovaných službou Renderer.
 
 \paragraph*{/core/files/\{path\}}
 Provádí CRUD operace nad uživatelskými soubory. Pro vkládání souborů je očekáván typ \lstinline|multipart/form-data| a lze nahrávat více souborů naráz. Složky lze vytvořit metodami POST/PUT a parametrem \lstinline|path| s cestou nové složky. Endpoint nazpět odpovídá typem \lstinline|application/json|. Příklad odpovědi je uveden v ukázce \ref{src:get-files-response}.

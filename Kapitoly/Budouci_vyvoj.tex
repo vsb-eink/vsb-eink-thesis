@@ -1,0 +1,12 @@
+\chapter{Budoucí vývoj}
+
+\section{Přechod na Inkplate Arduino}
+Přestože knihovna Inkplate ESP-IDF funguje bez vážných problémů, její vývoj je náročný bez znalosti interní komunikace mezi ESP32 a e-ink displejem. Pro budoucí vývoj by bylo vhodné přejít na knihovnu Inkplate Arduino skrze integraci Arduino Core do ESP-IDF. Tím by bylo možné využít oficiálních záplat od výrobce a získat podporu i pro novější verze panelů Inkplate.
+
+\section{Rozšíření MQTT komunikace}
+Komunikace mezi MQTT klienty by v budoucnu měla být zabezpečena pomocí certifikátu TLS. Tím by byla zajištěna bezpečnost komunikace bez možnosti falšování zpráv nepověřenými stranami. Alternativou je omezení přístupu na základě IP adresy klientů. 
+
+K rozšíření možností MQTT API lze přejít na novější verzi MQTTv5. Tato verze přidává dodatečné informace ke zprávám díky funkcionalitě „User Properties“. Tato funkce rozšiřuje možnosti aplikací pro přenos bohatšího kontextu bez potřeby úprav payloadu či topiku. Metadata by mohla například obsahovat identifikátor odesílatele či podrobnější informace o rozlišení cílového obrázku. MQTTv5 též zlepšuje zpracování chyb a diagnostiku problémů pomocí specifických návratových kódů zpráv \cite{IntroductionMQTTProtocol2019}.
+
+\section{Stav připojených panelů}
+Systém nabízí monitoring stavu připojených panelů pouze skrze zprávy MQTT. Nabízí se vytvořit novou službu, která by stav panelů monitorovala. Tento stav by poté byl skrze REST API dostupný ve službě Facade a následně ve webovém rozhraní.

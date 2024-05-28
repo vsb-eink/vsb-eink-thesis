@@ -100,7 +100,7 @@ void setup() {
 }
 \end{lstlisting}
 
-V ukázce \ref{src:arduino-hello-world} je znázorněn minimalistický program sloužící k ilustraci syntaxe knihovny Inkplate Arduino. Program nejprve inicializuje ovladač panelu a vyčistí displej a jeho buffer. Poté vykreslí černou kružnici se středem v souřadnicích x=600px, y=412px a poloměrem 75px. Pod kružnici je vykreseln text ,,Hello, world!".
+V ukázce \ref{src:arduino-hello-world} je znázorněn minimalistický program sloužící k ilustraci syntaxe knihovny Inkplate Arduino. Program nejprve inicializuje ovladač panelu a vyčistí displej a jeho buffer. Poté vykreslí černou kružnici se středem v souřadnicích x=600px, y=412px a poloměrem 75px. Pod kružnici je vykreslen text ,,Hello, world!".
 
 \subsubsection{Inkplate MicroPython}
 Druhá knihovna je určena pro firmware postavený na projektu MicroPython. Jedná se o kompilátor a běhové prostředí implementující programovací jazyk Python 3 optimalizované pro běh na mikrokontrolerech a v omezených prostředích. Snaží se být kompatibilní s běžnými desktopovými verzemi Pythonu. Nabízí tak interaktivní příkazovou řádku, správu výjimek, výpočty s libovolnou přesností, věstavěný souborový systém \cite{MicroPythonPythonMicrocontrollers}.
@@ -164,7 +164,7 @@ Třetí oficiálně doporučenou knihovnou je Inkplate ESP-IDF. Ta však není v
 
 Port vznikl pro účely Turcottova projeku čtečky elektronických knih. Čtečka byla určena pro osobou mu blízkou, která po úrazu utrpěla poranění míchy a zůstala upoutána na lůžku jen s omezeným pohybem končetin. Turcott jí symbolicky projekt věnoval, po její smrti na Covid-19, koncem roku 2020 \cite{turcotteTurgu1EPubInkPlate2024}.
 
-Na této knihovně mám částečný podíl i já, protože jsem si ji zvolil jako výchozí knihovnu pro interakci se zapůjčeným panel v rámci této práce a do upstreamu se dostalo pár změn, které jsem připravil ve forku, použitém ve výsledném projektu.
+Na této knihovně mám částečný podíl i já, protože jsem si ji zvolil jako výchozí knihovnu pro interakci se zapůjčeným panel v rámci této práce a do upstreamu se dostalo pár změn, které jsem připravil ve forku, použitém ve výsledném projektu \cite{TajnymagESPIDFInkPlateESPIDFInkPlate}.
 
 \begin{lstlisting}[label=src:esp-idf-hello-world,language=C++,caption={Ilustrační použití knihovny Inkplate ESP-IDF}]
 #include "inkplate.hpp"
